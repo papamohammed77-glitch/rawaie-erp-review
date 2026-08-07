@@ -1,0 +1,118 @@
+schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+public,app_settings,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,app_settings,Owner can do everything on app_settings,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,audit_log,السماح بالإدخال,PERMISSIVE,{public},INSERT,null,true
+public,audit_log,المالك يرى جميع السجلات,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,audit_log,المستخدم يرى سجلاته,PERMISSIVE,{public},SELECT,((auth.jwt() ->> 'email'::text) = user_email),null
+public,branches,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,branches,Owner can do everything on branches,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,budgets,budgets_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,cash_box,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,categories,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,chart_of_accounts,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,cheques,Enable all for authenticated users,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,complaint_types,allow_read_complaint_types,PERMISSIVE,{public},SELECT,(auth.role() = 'authenticated'::text),null
+public,cost_centers,cost_centers_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,coupons,coupons_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,credit_block_events,allow_insert_credit_blocks,PERMISSIVE,{public},INSERT,null,(auth.role() = 'authenticated'::text)
+public,credit_block_events,allow_read_credit_blocks,PERMISSIVE,{public},SELECT,(auth.role() = 'authenticated'::text),null
+public,credit_notes,المشرفون والمحاسبون يرون كل الإشع,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM users
+  WHERE (((users.email)::text = auth.email()) AND ((users.role)::text = ANY ((ARRAY['مدير'::character varying, 'محاسب'::character varying, 'مشرف'::character varying, 'مدير مالي'::character varying])::text[])))))",null
+public,customer_followups,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,customer_followups,Enable all for authenticated users,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,customer_ledger,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,customers,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,customers,Owner can do everything on customers,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,customers,allow_all_customers,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,customers,customers_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,daily_settlements,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,driver_ledger,driver_ledger_insert_service,PERMISSIVE,{public},INSERT,null,true
+public,driver_ledger,driver_ledger_select_own,PERMISSIVE,{public},SELECT,"(driver_email = (( SELECT users.email
+   FROM users
+  WHERE (users.id = auth.uid())))::text)",null
+public,driver_ledger,driver_ledger_update_service,PERMISSIVE,{public},UPDATE,true,null
+public,driver_liabilities,allow_read_driver_liabilities,PERMISSIVE,{public},SELECT,(auth.role() = 'authenticated'::text),null
+public,installment_details,Enable all for authenticated users,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,installments,Enable all for authenticated users,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,inventory_count_details,allow_all_inventory_count_details,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,inventory_counts,allow_all_inventory_counts,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,inventory_log,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,items,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,items,Owner can do everything on items,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,journal_entries,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,journal_lines,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,loyalty_points,Enable all for authenticated users,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,notification_templates,Allow authenticated access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,notifications,Allow authenticated access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+storage,objects,Allow authenticated uploads 16wiy3a_0,PERMISSIVE,{authenticated},INSERT,null,(bucket_id = 'product-images'::text)
+storage,objects,Allow authenticated uploads to product-images,PERMISSIVE,{authenticated},INSERT,null,(bucket_id = 'product-images'::text)
+storage,objects,Public Insert Access,PERMISSIVE,{public},INSERT,null,(bucket_id = 'product-images'::text)
+storage,objects,Public Read Access,PERMISSIVE,{public},SELECT,(bucket_id = 'product-images'::text),null
+storage,objects,public_read 16wiy3a_0,PERMISSIVE,"{anon,authenticated}",SELECT,(bucket_id = 'product-images'::text),null
+public,order_details,allow_all_order_details,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),(auth.role() = 'authenticated'::text)
+public,orders,allow_all_orders,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),(auth.role() = 'authenticated'::text)
+public,orders,allow_store_orders_insert,PERMISSIVE,"{anon,authenticated}",INSERT,null,true
+public,orders,السماح بإنشاء الأوردرات للمتجر ال,PERMISSIVE,{anon},INSERT,null,true
+public,purchase_order_details,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,purchase_orders,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,receiving,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,receiving,المشرفون يرون كل عمليات الاستلام,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM users
+  WHERE (((users.email)::text = auth.email()) AND ((users.role)::text = ANY ((ARRAY['مدير'::character varying, 'محاسب'::character varying, 'مشرف'::character varying, 'مدير مخازن'::character varying])::text[])))))",null
+public,receiving,مسؤول الاستلام يرى عملياته,PERMISSIVE,{public},SELECT,"(responsible = (( SELECT users.name
+   FROM users
+  WHERE ((users.email)::text = auth.email())))::text)",null
+public,receiving_details,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,receiving_details,المستخدمون يرون تفاصيل عملياتهم,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM receiving r
+  WHERE ((r.operation_id = receiving_details.operation_id) AND (r.responsible = (( SELECT users.name
+           FROM users
+          WHERE ((users.email)::text = auth.email())))::text))))",null
+public,receiving_details,المشرفون يرون كل التفاصيل,PERMISSIVE,{public},SELECT,"(EXISTS ( SELECT 1
+   FROM users
+  WHERE (((users.email)::text = auth.email()) AND ((users.role)::text = ANY ((ARRAY['مدير'::character varying, 'محاسب'::character varying, 'مشرف'::character varying, 'مدير مخازن'::character varying])::text[])))))",null
+public,return_reasons,allow_read_return_reasons,PERMISSIVE,{public},SELECT,(auth.role() = 'authenticated'::text),null
+public,return_reasons,allow_write_return_reasons,PERMISSIVE,{public},INSERT,null,"((auth.role() = 'authenticated'::text) AND (EXISTS ( SELECT 1
+   FROM users
+  WHERE (((users.email)::text = (auth.jwt() ->> 'email'::text)) AND ((users.role)::text = ANY ((ARRAY['مدير'::character varying, 'مشرف'::character varying, 'مالك'::character varying, 'owner'::character varying])::text[]))))))"
+public,role_permissions,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,roles,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,run_sheet_details,allow_all_run_sheet_details,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),(auth.role() = 'authenticated'::text)
+public,runsheets,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,runsheets,Owner can do everything on runsheets,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,runsheets,allow_all_runsheets,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,runsheets,runsheets_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,service_complaints,allow_insert_service_complaints,PERMISSIVE,{public},INSERT,null,"((auth.role() = 'authenticated'::text) AND (EXISTS ( SELECT 1
+   FROM users
+  WHERE (((users.email)::text = (auth.jwt() ->> 'email'::text)) AND ((users.status)::text = 'Active'::text)))))"
+public,service_complaints,allow_read_service_complaints,PERMISSIVE,{public},SELECT,(auth.role() = 'authenticated'::text),null
+public,service_complaints,allow_update_service_complaints,PERMISSIVE,{public},UPDATE,"((auth.role() = 'authenticated'::text) AND (EXISTS ( SELECT 1
+   FROM users
+  WHERE (((users.email)::text = (auth.jwt() ->> 'email'::text)) AND ((users.role)::text = ANY ((ARRAY['مدير'::character varying, 'مشرف'::character varying, 'محاسب'::character varying, 'مالك'::character varying, 'owner'::character varying])::text[]))))))",null
+public,stock_branches,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,stock_branches,Owner can do everything on stock_branches,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,stock_branches,stock_branches_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,stock_discrepancies,Allow authenticated users to insert discrepancies,PERMISSIVE,{public},INSERT,null,true
+public,stock_discrepancies,Allow authenticated users to read discrepancies,PERMISSIVE,{public},SELECT,true,null
+public,stock_discrepancies,Allow supervisors to update discrepancies,PERMISSIVE,{public},UPDATE,"(EXISTS ( SELECT 1
+   FROM users
+  WHERE ((users.id = auth.uid()) AND (((users.role)::text = 'supervisor'::text) OR ((users.role)::text = 'owner'::text)))))","(EXISTS ( SELECT 1
+   FROM users
+  WHERE ((users.id = auth.uid()) AND (((users.role)::text = 'supervisor'::text) OR ((users.role)::text = 'owner'::text)))))"
+public,stock_voucher_details,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,stock_vouchers,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,supplier_ledger,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,suppliers,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,suppliers,Owner can do everything on suppliers,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,suppliers,suppliers_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,treasury,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,users,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,users,Owner can do everything on users,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,users,users_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,vehicle_tracking,allow_all_vehicle_tracking,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,vehicles,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,work_orders,Enable all for authenticated users,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,workflow_log,Allow authenticated access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,workflow_rules,Allow authenticated access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,workflows,Enable all for authenticated users,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
