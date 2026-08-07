@@ -1,0 +1,749 @@
+table_name,column_name,data_type,is_nullable,column_default
+app_settings,id,uuid,NO,gen_random_uuid()
+app_settings,company_id,uuid,NO,null
+app_settings,delivery_fee,numeric,YES,0
+app_settings,min_invoice_amount,numeric,YES,0
+app_settings,tax_rate,numeric,YES,0
+app_settings,company_phone,character varying,YES,null
+app_settings,company_name,character varying,YES,null
+app_settings,company_logo,text,YES,null
+app_settings,runsheet_serial,integer,YES,1
+app_settings,order_serial,integer,YES,1
+app_settings,created_at,timestamp with time zone,YES,now()
+app_settings,updated_at,timestamp with time zone,YES,now()
+app_settings,status,character varying,YES,'trial'::character varying
+app_settings,trial_end_date,date,YES,null
+app_settings,subscription_end_date,date,YES,null
+app_settings,store_name,character varying,YES,null
+app_settings,store_logo,text,YES,null
+app_settings,store_primary_color,character varying,YES,'#2563eb'::character varying
+app_settings,store_secondary_color,character varying,YES,'#1e40af'::character varying
+app_settings,payment_method,character varying,YES,'both'::character varying
+app_settings,currency,character varying,YES,'SAR'::character varying
+app_settings,main_branch_id,uuid,YES,null
+audit_log,id,uuid,NO,gen_random_uuid()
+audit_log,user_email,text,YES,null
+audit_log,action,text,NO,null
+audit_log,table_name,text,YES,null
+audit_log,record_id,text,YES,null
+audit_log,old_data,jsonb,YES,null
+audit_log,new_data,jsonb,YES,null
+audit_log,ip_address,text,YES,null
+audit_log,user_agent,text,YES,null
+audit_log,created_at,timestamp with time zone,NO,now()
+branches,id,uuid,NO,gen_random_uuid()
+branches,company_id,uuid,NO,null
+branches,branch_code,character varying,NO,null
+branches,name,character varying,NO,null
+branches,location,text,YES,null
+branches,manager,character varying,YES,null
+branches,phone,character varying,YES,null
+branches,is_active,boolean,YES,true
+branches,created_at,timestamp with time zone,YES,now()
+branches,updated_at,timestamp with time zone,YES,now()
+budgets,id,uuid,NO,gen_random_uuid()
+budgets,cost_center_id,uuid,YES,null
+budgets,account_id,uuid,YES,null
+budgets,budget_year,integer,NO,null
+budgets,budget_month,integer,NO,null
+budgets,budgeted_amount,numeric,YES,0
+budgets,notes,text,YES,null
+budgets,created_at,timestamp with time zone,YES,now()
+budgets,updated_at,timestamp with time zone,YES,now()
+cash_box,id,uuid,NO,gen_random_uuid()
+cash_box,company_id,uuid,NO,null
+cash_box,voucher_code,character varying,NO,null
+cash_box,voucher_date,date,NO,CURRENT_DATE
+cash_box,treasury_id,uuid,NO,null
+cash_box,type,character varying,NO,null
+cash_box,amount,numeric,NO,null
+cash_box,source_type,character varying,YES,null
+cash_box,source_id,uuid,YES,null
+cash_box,source_name,character varying,YES,null
+cash_box,reference,character varying,YES,null
+cash_box,received_by,character varying,YES,null
+cash_box,notes,text,YES,null
+cash_box,status,character varying,YES,'Active'::character varying
+cash_box,user_email,character varying,YES,null
+cash_box,created_at,timestamp with time zone,YES,now()
+cash_box,updated_at,timestamp with time zone,YES,now()
+categories,id,uuid,NO,gen_random_uuid()
+categories,company_id,uuid,NO,null
+categories,category_name,character varying,NO,null
+categories,parent_id,uuid,YES,null
+categories,image_url,text,YES,null
+categories,icon,character varying,YES,null
+categories,created_at,timestamp with time zone,YES,now()
+categories,updated_at,timestamp with time zone,YES,now()
+chart_of_accounts,id,uuid,NO,gen_random_uuid()
+chart_of_accounts,company_id,uuid,NO,null
+chart_of_accounts,account_code,character varying,NO,null
+chart_of_accounts,account_name,character varying,NO,null
+chart_of_accounts,account_type,character varying,NO,null
+chart_of_accounts,parent_account_id,uuid,YES,null
+chart_of_accounts,normal_balance,character varying,NO,null
+chart_of_accounts,is_active,boolean,YES,true
+chart_of_accounts,notes,text,YES,null
+chart_of_accounts,created_at,timestamp with time zone,YES,now()
+chart_of_accounts,updated_at,timestamp with time zone,YES,now()
+cheques,id,uuid,NO,gen_random_uuid()
+cheques,cheque_number,text,NO,null
+cheques,bank_name,text,NO,null
+cheques,amount,numeric,NO,0
+cheques,cheque_date,date,NO,null
+cheques,due_date,date,NO,null
+cheques,from_account,text,YES,null
+cheques,to_account,text,YES,null
+cheques,status,text,YES,'Pending'::text
+cheques,notes,text,YES,null
+cheques,created_at,timestamp with time zone,YES,now()
+cheques,updated_at,timestamp with time zone,YES,now()
+companies,id,uuid,NO,gen_random_uuid()
+companies,company_code,character varying,NO,null
+companies,name,character varying,NO,null
+companies,logo_url,text,YES,null
+companies,tax_id,character varying,YES,null
+companies,phone,character varying,YES,null
+companies,email,character varying,YES,null
+companies,address,text,YES,null
+companies,is_active,boolean,YES,true
+companies,created_at,timestamp with time zone,YES,now()
+companies,updated_at,timestamp with time zone,YES,now()
+companies,website,text,YES,null
+complaint_types,id,uuid,NO,gen_random_uuid()
+complaint_types,company_id,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+complaint_types,type_name,character varying,NO,null
+complaint_types,is_active,boolean,YES,true
+complaint_types,created_at,timestamp with time zone,YES,now()
+cost_centers,id,uuid,NO,gen_random_uuid()
+cost_centers,code,text,NO,null
+cost_centers,name,text,NO,null
+cost_centers,parent_id,uuid,YES,null
+cost_centers,is_active,boolean,YES,true
+cost_centers,created_at,timestamp with time zone,YES,now()
+coupons,id,uuid,NO,gen_random_uuid()
+coupons,code,character varying,NO,null
+coupons,description,text,YES,null
+coupons,type,character varying,NO,null
+coupons,value,numeric,NO,null
+coupons,min_cart_amount,numeric,YES,0
+coupons,max_discount,numeric,YES,null
+coupons,usage_limit,integer,YES,null
+coupons,used_count,integer,YES,0
+coupons,max_uses_per_customer,integer,YES,1
+coupons,starts_at,timestamp with time zone,YES,null
+coupons,ends_at,timestamp with time zone,YES,null
+coupons,is_active,boolean,YES,true
+coupons,created_at,timestamp with time zone,YES,now()
+coupons,created_by,character varying,YES,null
+coupons,updated_at,timestamp with time zone,YES,now()
+credit_block_events,id,uuid,NO,gen_random_uuid()
+credit_block_events,company_id,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+credit_block_events,order_id,uuid,YES,null
+credit_block_events,runsheet_id,uuid,YES,null
+credit_block_events,driver_id,uuid,YES,null
+credit_block_events,customer_id,uuid,YES,null
+credit_block_events,credit_limit,numeric,YES,null
+credit_block_events,current_debt,numeric,YES,null
+credit_block_events,order_amount,numeric,YES,null
+credit_block_events,blocked_at,timestamp with time zone,YES,now()
+credit_block_events,status,character varying,YES,'blocked'::character varying
+credit_notes,id,uuid,NO,gen_random_uuid()
+credit_notes,company_id,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+credit_notes,cn_code,character varying,NO,null
+credit_notes,cn_date,date,NO,CURRENT_DATE
+credit_notes,order_id,uuid,YES,null
+credit_notes,runsheet_id,uuid,YES,null
+credit_notes,customer_id,uuid,YES,null
+credit_notes,customer_name,character varying,YES,null
+credit_notes,total_amount,numeric,YES,0
+credit_notes,reason,text,YES,null
+credit_notes,status,character varying,YES,'Posted'::character varying
+credit_notes,created_by,character varying,YES,null
+credit_notes,created_at,timestamp with time zone,YES,now()
+customer_assignments,id,uuid,NO,gen_random_uuid()
+customer_assignments,user_id,uuid,NO,null
+customer_assignments,customer_id,uuid,NO,null
+customer_assignments,assigned_by,uuid,YES,null
+customer_assignments,assigned_at,timestamp with time zone,YES,now()
+customer_assignments,is_active,boolean,YES,true
+customer_assignments,notes,text,YES,null
+customer_followups,id,uuid,NO,gen_random_uuid()
+customer_followups,customer_id,text,NO,null
+customer_followups,followup_date,date,NO,null
+customer_followups,followup_type,text,YES,'Call'::text
+customer_followups,subject,text,YES,null
+customer_followups,notes,text,YES,null
+customer_followups,assigned_to,text,YES,null
+customer_followups,status,text,YES,'Open'::text
+customer_followups,created_by,text,YES,null
+customer_followups,created_at,timestamp with time zone,YES,now()
+customer_followups,completed_at,timestamp with time zone,YES,null
+customer_ledger,id,uuid,NO,gen_random_uuid()
+customer_ledger,customer_id,uuid,NO,null
+customer_ledger,entry_date,date,NO,null
+customer_ledger,reference,character varying,YES,null
+customer_ledger,description,text,YES,null
+customer_ledger,debit,numeric,YES,0
+customer_ledger,credit,numeric,YES,0
+customer_ledger,balance,numeric,YES,0
+customer_ledger,due_date,date,YES,null
+customer_ledger,user_email,character varying,YES,null
+customer_ledger,created_at,timestamp with time zone,YES,now()
+customers,id,uuid,NO,gen_random_uuid()
+customers,company_id,uuid,NO,null
+customers,customer_code,character varying,NO,null
+customers,name,character varying,NO,null
+customers,search_label,text,YES,null
+customers,phone,character varying,YES,null
+customers,location,text,YES,null
+customers,area,character varying,YES,null
+customers,address,text,YES,null
+customers,customer_type,character varying,YES,null
+customers,payment_type,character varying,YES,null
+customers,debt,numeric,YES,0
+customers,visit_day,character varying,YES,null
+customers,contact_person,character varying,YES,null
+customers,sales_rep,character varying,YES,null
+customers,notes,text,YES,null
+customers,is_active,boolean,YES,true
+customers,created_at,timestamp with time zone,YES,now()
+customers,updated_at,timestamp with time zone,YES,now()
+customers,loyalty_points,integer,YES,0
+customers,credit_limit,numeric,YES,0
+customers,location_lat,numeric,YES,null
+customers,location_lng,numeric,YES,null
+daily_settlements,id,uuid,NO,gen_random_uuid()
+daily_settlements,company_id,uuid,NO,null
+daily_settlements,settlement_code,character varying,NO,null
+daily_settlements,settlement_date,date,NO,CURRENT_DATE
+daily_settlements,runsheet_id,uuid,YES,null
+daily_settlements,driver_id,uuid,YES,null
+daily_settlements,vehicle_id,uuid,YES,null
+daily_settlements,inventory_voucher_id,uuid,YES,null
+daily_settlements,total_shortage,numeric,YES,null
+daily_settlements,total_shortage_value,numeric,YES,null
+daily_settlements,extra_items_count,integer,YES,null
+daily_settlements,status,character varying,YES,'Completed'::character varying
+daily_settlements,notes,text,YES,null
+daily_settlements,created_by,character varying,YES,null
+daily_settlements,created_at,timestamp with time zone,YES,now()
+daily_settlements,updated_at,timestamp with time zone,YES,now()
+driver_ledger,id,uuid,NO,gen_random_uuid()
+driver_ledger,driver_email,text,NO,null
+driver_ledger,entry_date,date,NO,CURRENT_DATE
+driver_ledger,description,text,YES,null
+driver_ledger,debit,numeric,YES,0
+driver_ledger,credit,numeric,YES,0
+driver_ledger,balance,numeric,YES,0
+driver_ledger,reference,text,YES,null
+driver_ledger,created_at,timestamp with time zone,YES,now()
+driver_liabilities,id,uuid,NO,gen_random_uuid()
+driver_liabilities,company_id,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+driver_liabilities,driver_id,uuid,YES,null
+driver_liabilities,runsheet_id,uuid,YES,null
+driver_liabilities,item_code,character varying,YES,null
+driver_liabilities,item_name,character varying,YES,null
+driver_liabilities,qty_missing,numeric,YES,0
+driver_liabilities,unit_price,numeric,YES,0
+driver_liabilities,amount,numeric,YES,0
+driver_liabilities,reason,character varying,YES,null
+driver_liabilities,status,character varying,YES,'pending'::character varying
+driver_liabilities,settlement_id,uuid,YES,null
+driver_liabilities,notes,text,YES,null
+driver_liabilities,created_at,timestamp with time zone,YES,now()
+driver_liabilities,updated_at,timestamp with time zone,YES,now()
+installment_details,id,uuid,NO,gen_random_uuid()
+installment_details,installment_id,text,NO,null
+installment_details,due_date,date,NO,null
+installment_details,due_amount,numeric,NO,null
+installment_details,paid_amount,numeric,YES,0
+installment_details,paid_date,date,YES,null
+installment_details,status,text,YES,'Pending'::text
+installment_details,notes,text,YES,null
+installments,id,uuid,NO,gen_random_uuid()
+installments,installment_id,text,NO,null
+installments,invoice_id,text,NO,null
+installments,customer_id,text,NO,null
+installments,total_amount,numeric,NO,null
+installments,paid_amount,numeric,YES,0
+installments,remaining_amount,numeric,YES,0
+installments,installment_count,integer,YES,1
+installments,start_date,date,YES,null
+installments,status,text,YES,'Active'::text
+installments,created_at,timestamp with time zone,YES,now()
+inventory_count_details,id,uuid,NO,gen_random_uuid()
+inventory_count_details,count_id,uuid,NO,null
+inventory_count_details,item_code,character varying,YES,null
+inventory_count_details,item_name,character varying,YES,null
+inventory_count_details,unit,character varying,YES,'حبة'::character varying
+inventory_count_details,counted_qty,numeric,YES,0
+inventory_count_details,notes,text,YES,null
+inventory_count_details,created_at,timestamp with time zone,YES,now()
+inventory_counts,id,uuid,NO,gen_random_uuid()
+inventory_counts,type,character varying,NO,'branch'::character varying
+inventory_counts,entity_id,uuid,YES,null
+inventory_counts,reference,character varying,YES,null
+inventory_counts,created_by,character varying,YES,null
+inventory_counts,company_id,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+inventory_counts,created_at,timestamp with time zone,YES,now()
+inventory_log,id,uuid,NO,gen_random_uuid()
+inventory_log,company_id,uuid,NO,null
+inventory_log,log_code,character varying,NO,null
+inventory_log,movement_date,date,NO,CURRENT_DATE
+inventory_log,voucher_id,character varying,YES,null
+inventory_log,item_id,uuid,YES,null
+inventory_log,item_code,character varying,YES,null
+inventory_log,item_name,character varying,YES,null
+inventory_log,movement_type,character varying,NO,null
+inventory_log,qty,numeric,NO,null
+inventory_log,reference,text,YES,null
+inventory_log,user_email,character varying,YES,null
+inventory_log,created_at,timestamp with time zone,YES,now()
+items,id,uuid,NO,gen_random_uuid()
+items,company_id,uuid,NO,null
+items,item_code,character varying,NO,null
+items,barcode,character varying,YES,null
+items,name,character varying,NO,null
+items,search_label,text,YES,null
+items,category_id,uuid,YES,null
+items,unit,character varying,NO,null
+items,alt_unit,character varying,YES,null
+items,alt_unit_qty,numeric,YES,0
+items,sales_price,numeric,NO,0
+items,old_price,numeric,YES,null
+items,cost_price,numeric,YES,0
+items,weight_kg,numeric,YES,null
+items,volume_m3,numeric,YES,null
+items,reorder_point,numeric,YES,0
+items,max_qty,numeric,YES,0
+items,description,text,YES,null
+items,image_url,text,YES,null
+items,is_active,boolean,YES,true
+items,created_at,timestamp with time zone,YES,now()
+items,updated_at,timestamp with time zone,YES,now()
+items,category,text,YES,null
+items,show_in_store,boolean,YES,true
+items,discount_percent,numeric,YES,0
+items,discount_start,date,YES,null
+items,discount_end,date,YES,null
+items,is_daily_deal,boolean,YES,false
+items,badge_text,character varying,YES,null
+items,max_qty_per_order,integer,YES,null
+items,sort_order,integer,YES,0
+journal_entries,id,uuid,NO,gen_random_uuid()
+journal_entries,company_id,uuid,NO,null
+journal_entries,entry_code,character varying,NO,null
+journal_entries,entry_date,date,NO,CURRENT_DATE
+journal_entries,reference,character varying,YES,null
+journal_entries,description,text,YES,null
+journal_entries,entry_type,character varying,YES,null
+journal_entries,status,character varying,YES,'Posted'::character varying
+journal_entries,created_by,character varying,YES,null
+journal_entries,posting_date,timestamp with time zone,YES,null
+journal_entries,created_at,timestamp with time zone,YES,now()
+journal_entries,updated_at,timestamp with time zone,YES,now()
+journal_lines,id,uuid,NO,gen_random_uuid()
+journal_lines,entry_id,uuid,NO,null
+journal_lines,account_id,uuid,NO,null
+journal_lines,account_name,character varying,YES,null
+journal_lines,debit,numeric,YES,0
+journal_lines,credit,numeric,YES,0
+journal_lines,notes,text,YES,null
+journal_lines,created_at,timestamp with time zone,YES,now()
+journal_lines,cost_center_id,uuid,YES,null
+loyalty_points,id,uuid,NO,gen_random_uuid()
+loyalty_points,customer_id,text,NO,null
+loyalty_points,points,integer,YES,0
+loyalty_points,source,text,YES,null
+loyalty_points,reference_id,text,YES,null
+loyalty_points,expiry_date,date,YES,null
+loyalty_points,used_at,timestamp with time zone,YES,null
+loyalty_points,created_at,timestamp with time zone,YES,now()
+notification_templates,id,uuid,NO,gen_random_uuid()
+notification_templates,code,text,NO,null
+notification_templates,title_template,text,NO,null
+notification_templates,body_template,text,YES,null
+notification_templates,channel,text,YES,'in_app'::text
+notification_templates,is_active,boolean,YES,true
+notifications,id,uuid,NO,gen_random_uuid()
+notifications,user_email,text,YES,null
+notifications,title,text,NO,null
+notifications,body,text,YES,null
+notifications,type,text,YES,'info'::text
+notifications,reference_table,text,YES,null
+notifications,reference_id,text,YES,null
+notifications,is_read,boolean,YES,false
+notifications,created_at,timestamp with time zone,YES,now()
+order_details,id,uuid,NO,gen_random_uuid()
+order_details,order_id,uuid,NO,null
+order_details,item_id,uuid,NO,null
+order_details,item_code,character varying,YES,null
+order_details,item_name,character varying,YES,null
+order_details,unit,character varying,YES,null
+order_details,unit_price,numeric,NO,null
+order_details,qty,numeric,NO,null
+order_details,qty_picked,numeric,YES,0
+order_details,qty_loaded,numeric,YES,0
+order_details,qty_delivered,numeric,YES,0
+order_details,qty_refused,numeric,YES,0
+order_details,qty_returned,numeric,YES,0
+order_details,line_amount,numeric,YES,null
+order_details,notes,text,YES,null
+order_details,created_at,timestamp with time zone,YES,now()
+order_details,updated_at,timestamp with time zone,YES,now()
+order_details,reason_picking,character varying,YES,null
+order_details,reason_loading,character varying,YES,null
+order_details,reason_delivery,character varying,YES,null
+order_details,reason_return,character varying,YES,null
+order_details,driver_liability,numeric,YES,0
+orders,id,uuid,NO,gen_random_uuid()
+orders,company_id,uuid,NO,null
+orders,order_code,character varying,NO,null
+orders,order_date,date,NO,CURRENT_DATE
+orders,customer_id,uuid,YES,null
+orders,customer_name,character varying,YES,null
+orders,area,character varying,YES,null
+orders,total_amount,numeric,NO,0
+orders,delivery_fee,numeric,YES,0
+orders,order_status,character varying,NO,'Draft'::character varying
+orders,payment_type,character varying,YES,null
+orders,runsheet_id,uuid,YES,null
+orders,branch_id,uuid,YES,null
+orders,created_by,character varying,YES,null
+orders,notes,text,YES,null
+orders,created_at,timestamp with time zone,YES,now()
+orders,updated_at,timestamp with time zone,YES,now()
+orders,latitude,double precision,YES,null
+orders,longitude,double precision,YES,null
+orders,sales_rep_id,uuid,YES,null
+orders,sales_rep_name,text,YES,null
+orders,offline_created_at,timestamp with time zone,YES,null
+orders,sync_status,text,YES,'synced'::text
+orders,device_id,text,YES,null
+orders,source,character varying,YES,'pos'::character varying
+orders,customer_email,character varying,YES,null
+orders,customer_phone,character varying,YES,null
+orders,coupon_code,character varying,YES,null
+orders,discount_amount,numeric,YES,0
+orders,tracking_token,uuid,YES,gen_random_uuid()
+orders,shipping_address,jsonb,YES,null
+orders,original_total_amount,numeric,YES,null
+orders,amount_paid,numeric,YES,0
+owner_profile,id,uuid,NO,gen_random_uuid()
+owner_profile,auth_user_id,uuid,YES,null
+owner_profile,owner_name,text,NO,'المالك العام'::text
+owner_profile,owner_email,text,NO,null
+owner_profile,license_status,text,NO,'active'::text
+owner_profile,trial_end_date,date,YES,null
+owner_profile,subscription_end_date,date,YES,null
+owner_profile,created_at,timestamp with time zone,NO,now()
+owner_profile,updated_at,timestamp with time zone,NO,now()
+purchase_order_details,id,uuid,NO,gen_random_uuid()
+purchase_order_details,po_id,uuid,NO,null
+purchase_order_details,item_id,uuid,NO,null
+purchase_order_details,item_code,character varying,YES,null
+purchase_order_details,item_name,character varying,YES,null
+purchase_order_details,unit,character varying,YES,null
+purchase_order_details,qty_ordered,numeric,NO,null
+purchase_order_details,unit_price,numeric,NO,null
+purchase_order_details,qty_received,numeric,YES,0
+purchase_order_details,line_amount,numeric,YES,null
+purchase_order_details,notes,text,YES,null
+purchase_order_details,created_at,timestamp with time zone,YES,now()
+purchase_orders,id,uuid,NO,gen_random_uuid()
+purchase_orders,company_id,uuid,NO,null
+purchase_orders,po_code,character varying,NO,null
+purchase_orders,po_date,date,NO,CURRENT_DATE
+purchase_orders,supplier_id,uuid,YES,null
+purchase_orders,supplier_name,character varying,YES,null
+purchase_orders,total_amount,numeric,NO,0
+purchase_orders,status,character varying,NO,'Draft'::character varying
+purchase_orders,branch_id,uuid,YES,null
+purchase_orders,created_by,character varying,YES,null
+purchase_orders,notes,text,YES,null
+purchase_orders,created_at,timestamp with time zone,YES,now()
+purchase_orders,updated_at,timestamp with time zone,YES,now()
+receiving,id,uuid,NO,gen_random_uuid()
+receiving,operation_id,text,NO,null
+receiving,date,date,YES,CURRENT_DATE
+receiving,po_number,text,YES,null
+receiving,responsible,text,YES,null
+receiving,start_time,timestamp without time zone,YES,null
+receiving,end_time,timestamp without time zone,YES,null
+receiving,status,text,YES,'Completed'::text
+receiving,company_id,uuid,YES,null
+receiving,created_at,timestamp without time zone,YES,now()
+receiving,updated_at,timestamp without time zone,YES,now()
+receiving_details,id,uuid,NO,gen_random_uuid()
+receiving_details,operation_id,text,YES,null
+receiving_details,item_code,text,YES,null
+receiving_details,item_name,text,YES,null
+receiving_details,unit,text,YES,null
+receiving_details,qty_expected,numeric,YES,0
+receiving_details,qty_received,numeric,YES,0
+receiving_details,difference,numeric,YES,0
+receiving_details,reason,text,YES,null
+receiving_details,created_at,timestamp without time zone,YES,now()
+return_reasons,id,uuid,NO,gen_random_uuid()
+return_reasons,company_id,uuid,YES,null
+return_reasons,reason_code,character varying,NO,null
+return_reasons,reason_name,character varying,NO,null
+return_reasons,reason_category,character varying,YES,'other'::character varying
+return_reasons,is_active,boolean,YES,true
+return_reasons,created_at,timestamp with time zone,YES,now()
+role_permissions,id,uuid,NO,gen_random_uuid()
+role_permissions,role_id,uuid,NO,null
+role_permissions,permission_key,character varying,NO,null
+roles,id,uuid,NO,gen_random_uuid()
+roles,company_id,uuid,NO,null
+roles,role_name,character varying,NO,null
+roles,description,text,YES,null
+roles,is_system,boolean,YES,false
+roles,created_at,timestamp with time zone,YES,now()
+roles,updated_at,timestamp with time zone,YES,now()
+roles,permissions,jsonb,YES,'[]'::jsonb
+run_sheet_details,id,uuid,NO,gen_random_uuid()
+run_sheet_details,runsheet_id,uuid,NO,null
+run_sheet_details,item_id,uuid,NO,null
+run_sheet_details,item_code,character varying,YES,null
+run_sheet_details,item_name,character varying,YES,null
+run_sheet_details,unit,character varying,YES,null
+run_sheet_details,unit_price,numeric,YES,null
+run_sheet_details,qty_ordered,numeric,YES,0
+run_sheet_details,qty_picked,numeric,YES,0
+run_sheet_details,qty_loaded,numeric,YES,0
+run_sheet_details,qty_delivered,numeric,YES,0
+run_sheet_details,qty_refused,numeric,YES,0
+run_sheet_details,qty_returned,numeric,YES,0
+run_sheet_details,orders_list,text,YES,null
+run_sheet_details,created_at,timestamp with time zone,YES,now()
+run_sheet_details,updated_at,timestamp with time zone,YES,now()
+run_sheet_details,return_condition,character varying,YES,'good'::character varying
+run_sheet_details,driver_liability,numeric,YES,0
+runsheets,id,uuid,NO,gen_random_uuid()
+runsheets,company_id,uuid,NO,null
+runsheets,runsheet_code,character varying,NO,null
+runsheets,run_date,date,NO,CURRENT_DATE
+runsheets,driver_id,uuid,YES,null
+runsheets,vehicle_id,uuid,YES,null
+runsheets,total_amount,numeric,YES,0
+runsheets,status,character varying,NO,'Open'::character varying
+runsheets,picker_id,uuid,YES,null
+runsheets,picker_start,timestamp with time zone,YES,null
+runsheets,picker_end,timestamp with time zone,YES,null
+runsheets,loader_id,uuid,YES,null
+runsheets,loader_start,timestamp with time zone,YES,null
+runsheets,loader_end,timestamp with time zone,YES,null
+runsheets,deliverer_id,uuid,YES,null
+runsheets,delivery_start,timestamp with time zone,YES,null
+runsheets,delivery_end,timestamp with time zone,YES,null
+runsheets,return_handler_id,uuid,YES,null
+runsheets,return_start,timestamp with time zone,YES,null
+runsheets,return_end,timestamp with time zone,YES,null
+runsheets,notes,text,YES,null
+runsheets,created_at,timestamp with time zone,YES,now()
+runsheets,updated_at,timestamp with time zone,YES,now()
+runsheets,created_by,text,YES,null
+runsheets,meter_start,numeric,YES,null
+runsheets,meter_end,numeric,YES,null
+service_complaints,id,uuid,NO,gen_random_uuid()
+service_complaints,complaint_code,character varying,NO,null
+service_complaints,company_id,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+service_complaints,source_type,character varying,NO,'driver_app'::character varying
+service_complaints,employee_id,uuid,YES,null
+service_complaints,runsheet_id,uuid,YES,null
+service_complaints,order_id,uuid,YES,null
+service_complaints,liability_id,uuid,YES,null
+service_complaints,complaint_type_id,uuid,YES,null
+service_complaints,item_code,character varying,YES,null
+service_complaints,item_name,character varying,YES,null
+service_complaints,status,character varying,NO,'open'::character varying
+service_complaints,description,text,YES,null
+service_complaints,reviewed_by,uuid,YES,null
+service_complaints,reviewed_at,timestamp with time zone,YES,null
+service_complaints,resolution,text,YES,null
+service_complaints,created_at,timestamp with time zone,YES,now()
+service_complaints,updated_at,timestamp with time zone,YES,now()
+stock_branches,id,uuid,NO,gen_random_uuid()
+stock_branches,branch_id,uuid,NO,null
+stock_branches,item_id,uuid,NO,null
+stock_branches,qty,numeric,NO,0
+stock_branches,allocated_qty,numeric,NO,0
+stock_branches,available_qty,numeric,YES,null
+stock_branches,updated_at,timestamp with time zone,YES,now()
+stock_discrepancies,id,uuid,NO,gen_random_uuid()
+stock_discrepancies,runsheet_id,uuid,NO,null
+stock_discrepancies,item_code,character varying,NO,null
+stock_discrepancies,item_name,character varying,YES,null
+stock_discrepancies,expected_qty,numeric,NO,null
+stock_discrepancies,actual_qty,numeric,NO,null
+stock_discrepancies,difference_qty,numeric,NO,null
+stock_discrepancies,discrepancy_type,character varying,YES,null
+stock_discrepancies,reported_by,uuid,YES,null
+stock_discrepancies,status,character varying,YES,'pending'::character varying
+stock_discrepancies,notes,text,YES,null
+stock_discrepancies,actual_item_code,character varying,YES,null
+stock_discrepancies,expected_item_code,character varying,YES,null
+stock_discrepancies,actual_item_name,character varying,YES,null
+stock_discrepancies,expected_item_name,character varying,YES,null
+stock_discrepancies,company_id,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+stock_discrepancies,created_at,timestamp with time zone,YES,now()
+stock_voucher_details,id,uuid,NO,gen_random_uuid()
+stock_voucher_details,voucher_id,uuid,NO,null
+stock_voucher_details,item_id,uuid,NO,null
+stock_voucher_details,item_code,character varying,YES,null
+stock_voucher_details,item_name,character varying,YES,null
+stock_voucher_details,unit,character varying,YES,null
+stock_voucher_details,qty,numeric,NO,null
+stock_voucher_details,unit_price,numeric,YES,0
+stock_voucher_details,received_qty,numeric,YES,null
+stock_voucher_details,notes,text,YES,null
+stock_voucher_details,created_at,timestamp with time zone,YES,now()
+stock_vouchers,id,uuid,NO,gen_random_uuid()
+stock_vouchers,company_id,uuid,NO,null
+stock_vouchers,voucher_code,character varying,NO,null
+stock_vouchers,voucher_date,date,NO,CURRENT_DATE
+stock_vouchers,type,character varying,NO,null
+stock_vouchers,status,character varying,YES,'Draft'::character varying
+stock_vouchers,from_branch_id,uuid,YES,null
+stock_vouchers,to_branch_id,uuid,YES,null
+stock_vouchers,from_type,character varying,YES,null
+stock_vouchers,from_id,uuid,YES,null
+stock_vouchers,to_type,character varying,YES,null
+stock_vouchers,to_id,uuid,YES,null
+stock_vouchers,reference,character varying,YES,null
+stock_vouchers,notes,text,YES,null
+stock_vouchers,created_by,character varying,YES,null
+stock_vouchers,sent_date,timestamp with time zone,YES,null
+stock_vouchers,received_date,timestamp with time zone,YES,null
+stock_vouchers,completed_at,timestamp with time zone,YES,null
+stock_vouchers,created_at,timestamp with time zone,YES,now()
+stock_vouchers,updated_at,timestamp with time zone,YES,now()
+stock_vouchers,source,text,YES,'Manual'::text
+supplier_ledger,id,uuid,NO,gen_random_uuid()
+supplier_ledger,supplier_id,uuid,NO,null
+supplier_ledger,entry_date,date,NO,null
+supplier_ledger,reference,character varying,YES,null
+supplier_ledger,description,text,YES,null
+supplier_ledger,debit,numeric,YES,0
+supplier_ledger,credit,numeric,YES,0
+supplier_ledger,balance,numeric,YES,0
+supplier_ledger,due_date,date,YES,null
+supplier_ledger,user_email,character varying,YES,null
+supplier_ledger,created_at,timestamp with time zone,YES,now()
+suppliers,id,uuid,NO,gen_random_uuid()
+suppliers,company_id,uuid,NO,null
+suppliers,supplier_code,character varying,NO,null
+suppliers,name,character varying,NO,null
+suppliers,search_label,text,YES,null
+suppliers,phone,character varying,YES,null
+suppliers,location,text,YES,null
+suppliers,area,character varying,YES,null
+suppliers,address,text,YES,null
+suppliers,supplier_type,character varying,YES,null
+suppliers,payment_type,character varying,YES,null
+suppliers,accounts_payable,numeric,YES,0
+suppliers,contact_person,character varying,YES,null
+suppliers,purchase_rep,character varying,YES,null
+suppliers,notes,text,YES,null
+suppliers,is_active,boolean,YES,true
+suppliers,created_at,timestamp with time zone,YES,now()
+suppliers,updated_at,timestamp with time zone,YES,now()
+treasury,id,uuid,NO,gen_random_uuid()
+treasury,company_id,uuid,NO,null
+treasury,account_code,character varying,NO,null
+treasury,account_name,character varying,NO,null
+treasury,type,character varying,NO,null
+treasury,opening_balance,numeric,YES,0
+treasury,current_balance,numeric,YES,0
+treasury,is_active,boolean,YES,true
+treasury,notes,text,YES,null
+treasury,created_at,timestamp with time zone,YES,now()
+treasury,updated_at,timestamp with time zone,YES,now()
+users,id,uuid,NO,gen_random_uuid()
+users,company_id,uuid,NO,null
+users,email,character varying,NO,null
+users,name,character varying,NO,null
+users,password_hash,character varying,NO,null
+users,role,character varying,NO,null
+users,permissions,jsonb,YES,'[]'::jsonb
+users,status,character varying,YES,'Active'::character varying
+users,phone,character varying,YES,null
+users,default_branch_id,uuid,YES,null
+users,allowed_branch_ids,jsonb,YES,'[]'::jsonb
+users,expiry_date,date,YES,null
+users,last_login,timestamp with time zone,YES,null
+users,created_at,timestamp with time zone,YES,now()
+users,updated_at,timestamp with time zone,YES,now()
+users,employee_id,text,YES,null
+users,role_id,uuid,YES,null
+users,auth_id,uuid,YES,null
+users,allow_all_customers,boolean,YES,false
+users,restrict_to_visit_day,boolean,YES,true
+users,device_id,text,YES,null
+users,active_warehouse_role,text,YES,null
+vehicle_tracking,id,uuid,NO,gen_random_uuid()
+vehicle_tracking,vehicle_id,uuid,YES,null
+vehicle_tracking,driver_id,uuid,YES,null
+vehicle_tracking,runsheet_code,character varying,YES,null
+vehicle_tracking,meter_reading,integer,NO,null
+vehicle_tracking,meter_photo_url,text,YES,null
+vehicle_tracking,tracking_date,date,YES,CURRENT_DATE
+vehicle_tracking,created_at,timestamp with time zone,YES,now()
+vehicle_tracking,company_id,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+vehicles,id,uuid,NO,gen_random_uuid()
+vehicles,company_id,uuid,NO,null
+vehicles,vehicle_code,character varying,NO,null
+vehicles,model,character varying,YES,null
+vehicles,license_plate,character varying,NO,null
+vehicles,driver_id,uuid,YES,null
+vehicles,max_weight_kg,numeric,YES,null
+vehicles,max_volume_m3,numeric,YES,null
+vehicles,min_trip_value,numeric,YES,null
+vehicles,status,character varying,YES,'Active'::character varying
+vehicles,notes,text,YES,null
+vehicles,created_at,timestamp with time zone,YES,now()
+vehicles,updated_at,timestamp with time zone,YES,now()
+work_order_details,id,uuid,NO,gen_random_uuid()
+work_order_details,work_order_code,text,NO,null
+work_order_details,item_code,text,YES,null
+work_order_details,item_name,text,YES,null
+work_order_details,qty,numeric,YES,0
+work_order_details,unit,text,YES,'حبة'::text
+work_order_details,notes,text,YES,null
+work_orders,id,uuid,NO,gen_random_uuid()
+work_orders,order_code,text,NO,null
+work_orders,order_date,date,NO,null
+work_orders,customer_id,text,YES,null
+work_orders,customer_name,text,YES,null
+work_orders,description,text,YES,null
+work_orders,status,text,YES,'Draft'::text
+work_orders,priority,text,YES,'Normal'::text
+work_orders,assigned_to,text,YES,null
+work_orders,started_at,timestamp with time zone,YES,null
+work_orders,completed_at,timestamp with time zone,YES,null
+work_orders,created_by,text,YES,null
+work_orders,created_at,timestamp with time zone,YES,now()
+workflow_log,id,uuid,NO,gen_random_uuid()
+workflow_log,rule_id,uuid,YES,null
+workflow_log,trigger_record_id,text,YES,null
+workflow_log,trigger_data,jsonb,YES,null
+workflow_log,actions_executed,jsonb,YES,null
+workflow_log,status,text,YES,'success'::text
+workflow_log,executed_at,timestamp with time zone,YES,now()
+workflow_rules,id,uuid,NO,gen_random_uuid()
+workflow_rules,name,text,NO,null
+workflow_rules,trigger_table,text,NO,null
+workflow_rules,trigger_event,text,NO,null
+workflow_rules,trigger_condition,jsonb,YES,null
+workflow_rules,actions,jsonb,NO,null
+workflow_rules,is_active,boolean,YES,true
+workflow_rules,created_at,timestamp with time zone,YES,now()
+workflows,id,uuid,NO,gen_random_uuid()
+workflows,workflow_code,text,NO,null
+workflows,workflow_name,text,NO,null
+workflows,entity_type,text,YES,null
+workflows,steps,jsonb,YES,'[]'::jsonb
+workflows,is_active,boolean,YES,true
+workflows,created_at,timestamp with time zone,YES,now()
