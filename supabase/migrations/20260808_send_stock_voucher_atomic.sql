@@ -1,6 +1,7 @@
 -- RAWAEA Inventory Sprint 1
 -- Atomic transaction boundary for send-stock-voucher.
 -- Additive, non-destructive migration.
+-- RAWAEA V1: one operational company; app_settings must resolve to exactly one row.
 
 create or replace function public.send_stock_voucher_atomic(
   p_company_id uuid,
@@ -32,10 +33,12 @@ begin
   if v_voucher.status <> 'Draft' then raise exception 'Voucher is not Draft'; end if;
 
   if v_voucher.from_id is null then
-    select main_branch_id into v_main_branch_id
+    -- RAWAEA V1: app_settings is the server-side company/branch context.
+    -- STRICT prevents silently selecting an arbitrary row if the V1 singleton
+    -- invariant is violated.
+    select main_branch_id into strict v_main_branch_id
     from app_settings
-    where company_id = p_company_id
-    limit 1;
+    where company_id = p_company_id;
   end if;
 
   -- Preserve the existing send-stock-voucher deduction business rule.
