@@ -1,0 +1,193 @@
+schema_name,table_name,constraint_name,constraint_type,definition
+public,app_settings,app_settings_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,app_settings,app_settings_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,audit_log,audit_log_action_check,CHECK,"CHECK ((action = ANY (ARRAY['create'::text, 'update'::text, 'delete'::text, 'login'::text, 'logout'::text, 'failed_login'::text])))"
+public,audit_log,audit_log_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,branches,branches_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,branches,branches_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,branches,branches_company_id_branch_code_key,UNIQUE,"UNIQUE (company_id, branch_code)"
+public,budgets,budgets_budget_month_check,CHECK,CHECK (((budget_month >= 1) AND (budget_month <= 12)))
+public,budgets,budgets_account_id_fkey,FOREIGN KEY,FOREIGN KEY (account_id) REFERENCES chart_of_accounts(id) ON DELETE CASCADE
+public,budgets,budgets_cost_center_id_fkey,FOREIGN KEY,FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE CASCADE
+public,budgets,budgets_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,budgets,budgets_cost_center_id_account_id_budget_year_budget_month_key,UNIQUE,"UNIQUE (cost_center_id, account_id, budget_year, budget_month)"
+public,cash_box,cash_box_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,cash_box,cash_box_treasury_id_fkey,FOREIGN KEY,FOREIGN KEY (treasury_id) REFERENCES treasury(id) ON DELETE RESTRICT
+public,cash_box,cash_box_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,cash_box,cash_box_company_id_voucher_code_key,UNIQUE,"UNIQUE (company_id, voucher_code)"
+public,categories,categories_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,categories,categories_parent_id_fkey,FOREIGN KEY,FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE SET NULL
+public,categories,categories_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,chart_of_accounts,chart_of_accounts_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,chart_of_accounts,chart_of_accounts_parent_account_id_fkey,FOREIGN KEY,FOREIGN KEY (parent_account_id) REFERENCES chart_of_accounts(id) ON DELETE SET NULL
+public,chart_of_accounts,chart_of_accounts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,chart_of_accounts,chart_of_accounts_company_id_account_code_key,UNIQUE,"UNIQUE (company_id, account_code)"
+public,cheques,cheques_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,companies,companies_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,companies,companies_company_code_key,UNIQUE,UNIQUE (company_code)
+public,complaint_types,complaint_types_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,complaint_types,complaint_types_company_id_type_name_key,UNIQUE,"UNIQUE (company_id, type_name)"
+public,cost_centers,cost_centers_parent_id_fkey,FOREIGN KEY,FOREIGN KEY (parent_id) REFERENCES cost_centers(id) ON DELETE SET NULL
+public,cost_centers,cost_centers_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,cost_centers,cost_centers_code_key,UNIQUE,UNIQUE (code)
+public,coupons,coupons_type_check,CHECK,"CHECK (((type)::text = ANY ((ARRAY['percentage'::character varying, 'fixed'::character varying])::text[])))"
+public,coupons,coupons_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,coupons,coupons_code_key,UNIQUE,UNIQUE (code)
+public,credit_block_events,credit_block_events_customer_id_fkey,FOREIGN KEY,FOREIGN KEY (customer_id) REFERENCES customers(id)
+public,credit_block_events,credit_block_events_driver_id_fkey,FOREIGN KEY,FOREIGN KEY (driver_id) REFERENCES users(id)
+public,credit_block_events,credit_block_events_order_id_fkey,FOREIGN KEY,FOREIGN KEY (order_id) REFERENCES orders(id)
+public,credit_block_events,credit_block_events_runsheet_id_fkey,FOREIGN KEY,FOREIGN KEY (runsheet_id) REFERENCES runsheets(id)
+public,credit_block_events,credit_block_events_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,credit_notes,credit_notes_customer_id_fkey,FOREIGN KEY,FOREIGN KEY (customer_id) REFERENCES customers(id)
+public,credit_notes,credit_notes_order_id_fkey,FOREIGN KEY,FOREIGN KEY (order_id) REFERENCES orders(id)
+public,credit_notes,credit_notes_runsheet_id_fkey,FOREIGN KEY,FOREIGN KEY (runsheet_id) REFERENCES runsheets(id)
+public,credit_notes,credit_notes_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,customer_assignments,customer_assignments_assigned_by_fkey,FOREIGN KEY,FOREIGN KEY (assigned_by) REFERENCES users(id)
+public,customer_assignments,customer_assignments_customer_id_fkey,FOREIGN KEY,FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+public,customer_assignments,customer_assignments_user_id_fkey,FOREIGN KEY,FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+public,customer_assignments,customer_assignments_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,customer_assignments,customer_assignments_user_id_customer_id_key,UNIQUE,"UNIQUE (user_id, customer_id)"
+public,customer_followups,customer_followups_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,customer_ledger,customer_ledger_customer_id_fkey,FOREIGN KEY,FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+public,customer_ledger,customer_ledger_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,customers,customers_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,customers,customers_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,customers,customers_company_id_customer_code_key,UNIQUE,"UNIQUE (company_id, customer_code)"
+public,daily_settlements,daily_settlements_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,daily_settlements,daily_settlements_driver_id_fkey,FOREIGN KEY,FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE SET NULL
+public,daily_settlements,daily_settlements_runsheet_id_fkey,FOREIGN KEY,FOREIGN KEY (runsheet_id) REFERENCES runsheets(id) ON DELETE SET NULL
+public,daily_settlements,daily_settlements_vehicle_id_fkey,FOREIGN KEY,FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+public,daily_settlements,daily_settlements_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,daily_settlements,daily_settlements_company_id_settlement_code_key,UNIQUE,"UNIQUE (company_id, settlement_code)"
+public,daily_settlements,uq_daily_settlement_runsheet,UNIQUE,UNIQUE (runsheet_id)
+public,driver_ledger,driver_ledger_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,driver_liabilities,driver_liabilities_driver_id_fkey,FOREIGN KEY,FOREIGN KEY (driver_id) REFERENCES users(id)
+public,driver_liabilities,driver_liabilities_runsheet_id_fkey,FOREIGN KEY,FOREIGN KEY (runsheet_id) REFERENCES runsheets(id)
+public,driver_liabilities,driver_liabilities_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,installment_details,installment_details_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,installments,installments_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,installments,installments_installment_id_key,UNIQUE,UNIQUE (installment_id)
+public,inventory_count_details,inventory_count_details_count_id_fkey,FOREIGN KEY,FOREIGN KEY (count_id) REFERENCES inventory_counts(id) ON DELETE CASCADE
+public,inventory_count_details,inventory_count_details_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,inventory_counts,inventory_counts_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,inventory_log,inventory_log_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,inventory_log,inventory_log_item_id_fkey,FOREIGN KEY,FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT
+public,inventory_log,inventory_log_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,items,items_category_id_fkey,FOREIGN KEY,FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+public,items,items_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,items,items_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,items,items_company_id_item_code_key,UNIQUE,"UNIQUE (company_id, item_code)"
+public,journal_entries,journal_entries_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,journal_entries,journal_entries_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,journal_entries,journal_entries_company_id_entry_code_key,UNIQUE,"UNIQUE (company_id, entry_code)"
+public,journal_lines,journal_lines_account_id_fkey,FOREIGN KEY,FOREIGN KEY (account_id) REFERENCES chart_of_accounts(id) ON DELETE RESTRICT
+public,journal_lines,journal_lines_cost_center_id_fkey,FOREIGN KEY,FOREIGN KEY (cost_center_id) REFERENCES cost_centers(id) ON DELETE SET NULL
+public,journal_lines,journal_lines_entry_id_fkey,FOREIGN KEY,FOREIGN KEY (entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE
+public,journal_lines,journal_lines_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,loyalty_points,loyalty_points_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,notification_templates,notification_templates_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,notification_templates,notification_templates_code_key,UNIQUE,UNIQUE (code)
+public,notifications,notifications_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,order_details,order_details_item_id_fkey,FOREIGN KEY,FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT
+public,order_details,order_details_order_id_fkey,FOREIGN KEY,FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+public,order_details,order_details_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,orders,fk_orders_runsheet,FOREIGN KEY,FOREIGN KEY (runsheet_id) REFERENCES runsheets(id) ON DELETE SET NULL
+public,orders,orders_branch_id_fkey,FOREIGN KEY,FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
+public,orders,orders_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,orders,orders_customer_id_fkey,FOREIGN KEY,FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE RESTRICT
+public,orders,orders_sales_rep_id_fkey,FOREIGN KEY,FOREIGN KEY (sales_rep_id) REFERENCES users(id)
+public,orders,orders_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,orders,orders_company_id_order_code_key,UNIQUE,"UNIQUE (company_id, order_code)"
+public,owner_profile,owner_profile_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,owner_profile,owner_profile_auth_user_id_key,UNIQUE,UNIQUE (auth_user_id)
+public,owner_profile,owner_profile_owner_email_key,UNIQUE,UNIQUE (owner_email)
+public,purchase_order_details,purchase_order_details_item_id_fkey,FOREIGN KEY,FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT
+public,purchase_order_details,purchase_order_details_po_id_fkey,FOREIGN KEY,FOREIGN KEY (po_id) REFERENCES purchase_orders(id) ON DELETE CASCADE
+public,purchase_order_details,purchase_order_details_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,purchase_orders,purchase_orders_branch_id_fkey,FOREIGN KEY,FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE SET NULL
+public,purchase_orders,purchase_orders_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,purchase_orders,purchase_orders_supplier_id_fkey,FOREIGN KEY,FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE RESTRICT
+public,purchase_orders,purchase_orders_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,purchase_orders,purchase_orders_company_id_po_code_key,UNIQUE,"UNIQUE (company_id, po_code)"
+public,receiving,receiving_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,receiving,receiving_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,receiving,receiving_operation_id_key,UNIQUE,UNIQUE (operation_id)
+public,receiving_details,receiving_details_operation_id_fkey,FOREIGN KEY,FOREIGN KEY (operation_id) REFERENCES receiving(operation_id) ON DELETE CASCADE
+public,receiving_details,receiving_details_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,return_reasons,return_reasons_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id)
+public,return_reasons,return_reasons_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,return_reasons,return_reasons_company_id_reason_code_key,UNIQUE,"UNIQUE (company_id, reason_code)"
+public,role_permissions,role_permissions_role_id_fkey,FOREIGN KEY,FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+public,role_permissions,role_permissions_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,role_permissions,role_permissions_role_id_permission_key_key,UNIQUE,"UNIQUE (role_id, permission_key)"
+public,roles,roles_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,roles,roles_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,roles,roles_company_id_role_name_key,UNIQUE,"UNIQUE (company_id, role_name)"
+public,run_sheet_details,run_sheet_details_item_id_fkey,FOREIGN KEY,FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT
+public,run_sheet_details,run_sheet_details_runsheet_id_fkey,FOREIGN KEY,FOREIGN KEY (runsheet_id) REFERENCES runsheets(id) ON DELETE CASCADE
+public,run_sheet_details,run_sheet_details_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,runsheets,runsheets_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,runsheets,runsheets_deliverer_id_fkey,FOREIGN KEY,FOREIGN KEY (deliverer_id) REFERENCES users(id) ON DELETE SET NULL
+public,runsheets,runsheets_driver_id_fkey,FOREIGN KEY,FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE SET NULL
+public,runsheets,runsheets_loader_id_fkey,FOREIGN KEY,FOREIGN KEY (loader_id) REFERENCES users(id) ON DELETE SET NULL
+public,runsheets,runsheets_picker_id_fkey,FOREIGN KEY,FOREIGN KEY (picker_id) REFERENCES users(id) ON DELETE SET NULL
+public,runsheets,runsheets_return_handler_id_fkey,FOREIGN KEY,FOREIGN KEY (return_handler_id) REFERENCES users(id) ON DELETE SET NULL
+public,runsheets,runsheets_vehicle_id_fkey,FOREIGN KEY,FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+public,runsheets,runsheets_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,runsheets,runsheets_company_id_runsheet_code_key,UNIQUE,"UNIQUE (company_id, runsheet_code)"
+public,service_complaints,service_complaints_complaint_type_id_fkey,FOREIGN KEY,FOREIGN KEY (complaint_type_id) REFERENCES complaint_types(id)
+public,service_complaints,service_complaints_employee_id_fkey,FOREIGN KEY,FOREIGN KEY (employee_id) REFERENCES users(id)
+public,service_complaints,service_complaints_liability_id_fkey,FOREIGN KEY,FOREIGN KEY (liability_id) REFERENCES driver_liabilities(id)
+public,service_complaints,service_complaints_order_id_fkey,FOREIGN KEY,FOREIGN KEY (order_id) REFERENCES orders(id)
+public,service_complaints,service_complaints_reviewed_by_fkey,FOREIGN KEY,FOREIGN KEY (reviewed_by) REFERENCES users(id)
+public,service_complaints,service_complaints_runsheet_id_fkey,FOREIGN KEY,FOREIGN KEY (runsheet_id) REFERENCES runsheets(id)
+public,service_complaints,service_complaints_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,service_complaints,service_complaints_company_id_complaint_code_key,UNIQUE,"UNIQUE (company_id, complaint_code)"
+public,stock_branches,stock_branches_branch_id_fkey,FOREIGN KEY,FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE
+public,stock_branches,stock_branches_item_id_fkey,FOREIGN KEY,FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE CASCADE
+public,stock_branches,stock_branches_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,stock_branches,stock_branches_branch_id_item_id_key,UNIQUE,"UNIQUE (branch_id, item_id)"
+public,stock_discrepancies,stock_discrepancies_discrepancy_type_check,CHECK,"CHECK (((discrepancy_type)::text = ANY ((ARRAY['surplus'::character varying, 'shortage'::character varying, 'wrong_item'::character varying, 'other'::character varying])::text[])))"
+public,stock_discrepancies,stock_discrepancies_status_check,CHECK,"CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'investigating'::character varying, 'resolved'::character varying])::text[])))"
+public,stock_discrepancies,stock_discrepancies_reported_by_fkey,FOREIGN KEY,FOREIGN KEY (reported_by) REFERENCES users(id)
+public,stock_discrepancies,stock_discrepancies_runsheet_id_fkey,FOREIGN KEY,FOREIGN KEY (runsheet_id) REFERENCES runsheets(id) ON DELETE CASCADE
+public,stock_discrepancies,stock_discrepancies_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,stock_voucher_details,stock_voucher_details_item_id_fkey,FOREIGN KEY,FOREIGN KEY (item_id) REFERENCES items(id) ON DELETE RESTRICT
+public,stock_voucher_details,stock_voucher_details_voucher_id_fkey,FOREIGN KEY,FOREIGN KEY (voucher_id) REFERENCES stock_vouchers(id) ON DELETE CASCADE
+public,stock_voucher_details,stock_voucher_details_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,stock_vouchers,stock_vouchers_source_check,CHECK,"CHECK ((source = ANY (ARRAY['Auto'::text, 'Manual'::text])))"
+public,stock_vouchers,stock_vouchers_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,stock_vouchers,stock_vouchers_from_branch_id_fkey,FOREIGN KEY,FOREIGN KEY (from_branch_id) REFERENCES branches(id) ON DELETE SET NULL
+public,stock_vouchers,stock_vouchers_to_branch_id_fkey,FOREIGN KEY,FOREIGN KEY (to_branch_id) REFERENCES branches(id) ON DELETE SET NULL
+public,stock_vouchers,stock_vouchers_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,stock_vouchers,stock_vouchers_company_id_voucher_code_key,UNIQUE,"UNIQUE (company_id, voucher_code)"
+public,supplier_ledger,supplier_ledger_supplier_id_fkey,FOREIGN KEY,FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE CASCADE
+public,supplier_ledger,supplier_ledger_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,suppliers,suppliers_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,suppliers,suppliers_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,suppliers,suppliers_company_id_supplier_code_key,UNIQUE,"UNIQUE (company_id, supplier_code)"
+public,treasury,treasury_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,treasury,treasury_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,treasury,treasury_company_id_account_code_key,UNIQUE,"UNIQUE (company_id, account_code)"
+public,users,users_auth_id_fkey,FOREIGN KEY,FOREIGN KEY (auth_id) REFERENCES auth.users(id) ON DELETE CASCADE
+public,users,users_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,users,users_default_branch_id_fkey,FOREIGN KEY,FOREIGN KEY (default_branch_id) REFERENCES branches(id) ON DELETE SET NULL
+public,users,users_role_id_fkey,FOREIGN KEY,FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE SET NULL
+public,users,users_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,users,users_auth_id_key,UNIQUE,UNIQUE (auth_id)
+public,users,users_email_key,UNIQUE,UNIQUE (email)
+public,vehicle_tracking,vehicle_tracking_driver_id_fkey,FOREIGN KEY,FOREIGN KEY (driver_id) REFERENCES users(id)
+public,vehicle_tracking,vehicle_tracking_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,vehicles,vehicles_company_id_fkey,FOREIGN KEY,FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+public,vehicles,vehicles_driver_id_fkey,FOREIGN KEY,FOREIGN KEY (driver_id) REFERENCES users(id) ON DELETE SET NULL
+public,vehicles,vehicles_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,vehicles,vehicles_company_id_vehicle_code_key,UNIQUE,"UNIQUE (company_id, vehicle_code)"
+public,work_order_details,work_order_details_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,work_orders,work_orders_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,work_orders,work_orders_order_code_key,UNIQUE,UNIQUE (order_code)
+public,workflow_log,workflow_log_rule_id_fkey,FOREIGN KEY,FOREIGN KEY (rule_id) REFERENCES workflow_rules(id) ON DELETE SET NULL
+public,workflow_log,workflow_log_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,workflow_rules,workflow_rules_trigger_event_check,CHECK,"CHECK ((trigger_event = ANY (ARRAY['insert'::text, 'update'::text, 'delete'::text])))"
+public,workflow_rules,workflow_rules_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,workflows,workflows_pkey,PRIMARY KEY,PRIMARY KEY (id)
+public,workflows,workflows_workflow_code_key,UNIQUE,UNIQUE (workflow_code)

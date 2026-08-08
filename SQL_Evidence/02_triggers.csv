@@ -1,0 +1,13 @@
+schema_name,table_name,trigger_name,trigger_definition,trigger_function
+public,cash_box,trg_audit_cash_box,CREATE TRIGGER trg_audit_cash_box AFTER INSERT OR DELETE OR UPDATE ON public.cash_box FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,customers,trg_audit_customers,CREATE TRIGGER trg_audit_customers AFTER INSERT OR DELETE OR UPDATE ON public.customers FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,items,trg_audit_items,CREATE TRIGGER trg_audit_items AFTER INSERT OR DELETE OR UPDATE ON public.items FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,journal_entries,trg_audit_journal_entries,CREATE TRIGGER trg_audit_journal_entries AFTER INSERT OR DELETE OR UPDATE ON public.journal_entries FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,journal_lines,trg_audit_journal_lines,CREATE TRIGGER trg_audit_journal_lines AFTER INSERT OR DELETE OR UPDATE ON public.journal_lines FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,order_details,trg_audit_order_details,CREATE TRIGGER trg_audit_order_details AFTER INSERT OR DELETE OR UPDATE ON public.order_details FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,order_details,trg_sync_run_sheet_details,CREATE TRIGGER trg_sync_run_sheet_details AFTER INSERT OR DELETE OR UPDATE ON public.order_details FOR EACH ROW EXECUTE FUNCTION sync_run_sheet_details(),sync_run_sheet_details
+public,orders,trg_audit_orders,CREATE TRIGGER trg_audit_orders AFTER INSERT OR DELETE OR UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,runsheets,trg_audit_runsheets,CREATE TRIGGER trg_audit_runsheets AFTER INSERT OR DELETE OR UPDATE ON public.runsheets FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,stock_vouchers,trg_audit_stock_vouchers,CREATE TRIGGER trg_audit_stock_vouchers AFTER INSERT OR DELETE OR UPDATE ON public.stock_vouchers FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,suppliers,trg_audit_suppliers,CREATE TRIGGER trg_audit_suppliers AFTER INSERT OR DELETE OR UPDATE ON public.suppliers FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger
+public,treasury,trg_audit_treasury,CREATE TRIGGER trg_audit_treasury AFTER INSERT OR DELETE OR UPDATE ON public.treasury FOR EACH ROW EXECUTE FUNCTION fn_audit_trigger(),fn_audit_trigger

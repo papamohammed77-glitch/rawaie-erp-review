@@ -1,0 +1,106 @@
+table_name,column_name,data_type
+inventory_count_details,id,uuid
+inventory_count_details,count_id,uuid
+inventory_count_details,item_code,character varying
+inventory_count_details,item_name,character varying
+inventory_count_details,unit,character varying
+inventory_count_details,counted_qty,numeric
+inventory_count_details,notes,text
+inventory_count_details,created_at,timestamp with time zone
+inventory_counts,id,uuid
+inventory_counts,type,character varying
+inventory_counts,entity_id,uuid
+inventory_counts,reference,character varying
+inventory_counts,created_by,character varying
+inventory_counts,company_id,uuid
+inventory_counts,created_at,timestamp with time zone
+inventory_log,id,uuid
+inventory_log,company_id,uuid
+inventory_log,log_code,character varying
+inventory_log,movement_date,date
+inventory_log,voucher_id,character varying
+inventory_log,item_id,uuid
+inventory_log,item_code,character varying
+inventory_log,item_name,character varying
+inventory_log,movement_type,character varying
+inventory_log,qty,numeric
+inventory_log,reference,text
+inventory_log,user_email,character varying
+inventory_log,created_at,timestamp with time zone
+receiving,id,uuid
+receiving,operation_id,text
+receiving,date,date
+receiving,po_number,text
+receiving,responsible,text
+receiving,start_time,timestamp without time zone
+receiving,end_time,timestamp without time zone
+receiving,status,text
+receiving,company_id,uuid
+receiving,created_at,timestamp without time zone
+receiving,updated_at,timestamp without time zone
+receiving_details,id,uuid
+receiving_details,operation_id,text
+receiving_details,item_code,text
+receiving_details,item_name,text
+receiving_details,unit,text
+receiving_details,qty_expected,numeric
+receiving_details,qty_received,numeric
+receiving_details,difference,numeric
+receiving_details,reason,text
+receiving_details,created_at,timestamp without time zone
+stock_branches,id,uuid
+stock_branches,branch_id,uuid
+stock_branches,item_id,uuid
+stock_branches,qty,numeric
+stock_branches,allocated_qty,numeric
+stock_branches,available_qty,numeric
+stock_branches,updated_at,timestamp with time zone
+stock_discrepancies,id,uuid
+stock_discrepancies,runsheet_id,uuid
+stock_discrepancies,item_code,character varying
+stock_discrepancies,item_name,character varying
+stock_discrepancies,expected_qty,numeric
+stock_discrepancies,actual_qty,numeric
+stock_discrepancies,difference_qty,numeric
+stock_discrepancies,discrepancy_type,character varying
+stock_discrepancies,reported_by,uuid
+stock_discrepancies,status,character varying
+stock_discrepancies,notes,text
+stock_discrepancies,actual_item_code,character varying
+stock_discrepancies,expected_item_code,character varying
+stock_discrepancies,actual_item_name,character varying
+stock_discrepancies,expected_item_name,character varying
+stock_discrepancies,company_id,uuid
+stock_discrepancies,created_at,timestamp with time zone
+stock_voucher_details,id,uuid
+stock_voucher_details,voucher_id,uuid
+stock_voucher_details,item_id,uuid
+stock_voucher_details,item_code,character varying
+stock_voucher_details,item_name,character varying
+stock_voucher_details,unit,character varying
+stock_voucher_details,qty,numeric
+stock_voucher_details,unit_price,numeric
+stock_voucher_details,received_qty,numeric
+stock_voucher_details,notes,text
+stock_voucher_details,created_at,timestamp with time zone
+stock_vouchers,id,uuid
+stock_vouchers,company_id,uuid
+stock_vouchers,voucher_code,character varying
+stock_vouchers,voucher_date,date
+stock_vouchers,type,character varying
+stock_vouchers,status,character varying
+stock_vouchers,from_branch_id,uuid
+stock_vouchers,to_branch_id,uuid
+stock_vouchers,from_type,character varying
+stock_vouchers,from_id,uuid
+stock_vouchers,to_type,character varying
+stock_vouchers,to_id,uuid
+stock_vouchers,reference,character varying
+stock_vouchers,notes,text
+stock_vouchers,created_by,character varying
+stock_vouchers,sent_date,timestamp with time zone
+stock_vouchers,received_date,timestamp with time zone
+stock_vouchers,completed_at,timestamp with time zone
+stock_vouchers,created_at,timestamp with time zone
+stock_vouchers,updated_at,timestamp with time zone
+stock_vouchers,source,text

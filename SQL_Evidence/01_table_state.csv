@@ -1,0 +1,21 @@
+schemaname,table_name,estimated_row_count,estimated_dead_rows,last_analyze,last_autoanalyze
+public,branches,2,7,null,null
+public,customer_ledger,0,0,null,null
+public,daily_settlements,0,0,null,null
+public,driver_ledger,0,0,null,null
+public,inventory_count_details,0,0,null,null
+public,inventory_counts,0,0,null,null
+public,inventory_log,137,52,null,2026-07-24 21:33:58.603722+00
+public,items,50,30,null,2026-07-17 11:51:29.574997+00
+public,journal_entries,3,22,null,2026-07-24 21:52:59.051474+00
+public,journal_lines,0,0,null,null
+public,orders,8,26,null,2026-07-24 20:43:57.635359+00
+public,purchase_orders,0,0,null,null
+public,receiving,0,0,null,null
+public,receiving_details,0,0,null,null
+public,runsheets,0,0,null,2026-06-29 11:40:19.658515+00
+public,stock_branches,99,25,null,2026-07-24 20:43:57.619877+00
+public,stock_voucher_details,0,0,null,null
+public,stock_vouchers,0,0,null,null
+public,supplier_ledger,0,0,null,null
+public,treasury,1,1,null,null

@@ -1,0 +1,120 @@
+table_name,ordinal_position,column_name,data_type,udt_name,is_nullable,column_default
+inventory_count_details,1,id,uuid,uuid,NO,gen_random_uuid()
+inventory_count_details,2,count_id,uuid,uuid,NO,null
+inventory_count_details,3,item_code,character varying,varchar,YES,null
+inventory_count_details,4,item_name,character varying,varchar,YES,null
+inventory_count_details,5,unit,character varying,varchar,YES,'حبة'::character varying
+inventory_count_details,6,counted_qty,numeric,numeric,YES,0
+inventory_count_details,7,notes,text,text,YES,null
+inventory_count_details,8,created_at,timestamp with time zone,timestamptz,YES,now()
+inventory_counts,1,id,uuid,uuid,NO,gen_random_uuid()
+inventory_counts,2,type,character varying,varchar,NO,'branch'::character varying
+inventory_counts,3,entity_id,uuid,uuid,YES,null
+inventory_counts,4,reference,character varying,varchar,YES,null
+inventory_counts,5,created_by,character varying,varchar,YES,null
+inventory_counts,6,company_id,uuid,uuid,YES,'00000000-0000-0000-0000-000000000001'::uuid
+inventory_counts,7,created_at,timestamp with time zone,timestamptz,YES,now()
+inventory_log,1,id,uuid,uuid,NO,gen_random_uuid()
+inventory_log,2,company_id,uuid,uuid,NO,null
+inventory_log,3,log_code,character varying,varchar,NO,null
+inventory_log,4,movement_date,date,date,NO,CURRENT_DATE
+inventory_log,5,voucher_id,character varying,varchar,YES,null
+inventory_log,6,item_id,uuid,uuid,YES,null
+inventory_log,7,item_code,character varying,varchar,YES,null
+inventory_log,8,item_name,character varying,varchar,YES,null
+inventory_log,9,movement_type,character varying,varchar,NO,null
+inventory_log,10,qty,numeric,numeric,NO,null
+inventory_log,11,reference,text,text,YES,null
+inventory_log,12,user_email,character varying,varchar,YES,null
+inventory_log,13,created_at,timestamp with time zone,timestamptz,YES,now()
+items,1,id,uuid,uuid,NO,gen_random_uuid()
+items,2,company_id,uuid,uuid,NO,null
+items,3,item_code,character varying,varchar,NO,null
+items,4,barcode,character varying,varchar,YES,null
+items,5,name,character varying,varchar,NO,null
+items,6,search_label,text,text,YES,null
+items,7,category_id,uuid,uuid,YES,null
+items,8,unit,character varying,varchar,NO,null
+items,9,alt_unit,character varying,varchar,YES,null
+items,10,alt_unit_qty,numeric,numeric,YES,0
+items,11,sales_price,numeric,numeric,NO,0
+items,12,old_price,numeric,numeric,YES,null
+items,13,cost_price,numeric,numeric,YES,0
+items,14,weight_kg,numeric,numeric,YES,null
+items,15,volume_m3,numeric,numeric,YES,null
+items,16,reorder_point,numeric,numeric,YES,0
+items,17,max_qty,numeric,numeric,YES,0
+items,18,description,text,text,YES,null
+items,19,image_url,text,text,YES,null
+items,20,is_active,boolean,bool,YES,true
+items,21,created_at,timestamp with time zone,timestamptz,YES,now()
+items,22,updated_at,timestamp with time zone,timestamptz,YES,now()
+items,23,category,text,text,YES,null
+items,24,show_in_store,boolean,bool,YES,true
+items,25,discount_percent,numeric,numeric,YES,0
+items,26,discount_start,date,date,YES,null
+items,27,discount_end,date,date,YES,null
+items,28,is_daily_deal,boolean,bool,YES,false
+items,29,badge_text,character varying,varchar,YES,null
+items,30,max_qty_per_order,integer,int4,YES,null
+items,31,sort_order,integer,int4,YES,0
+receiving,1,id,uuid,uuid,NO,gen_random_uuid()
+receiving,2,operation_id,text,text,NO,null
+receiving,3,date,date,date,YES,CURRENT_DATE
+receiving,4,po_number,text,text,YES,null
+receiving,5,responsible,text,text,YES,null
+receiving,6,start_time,timestamp without time zone,timestamp,YES,null
+receiving,7,end_time,timestamp without time zone,timestamp,YES,null
+receiving,8,status,text,text,YES,'Completed'::text
+receiving,9,company_id,uuid,uuid,YES,null
+receiving,10,created_at,timestamp without time zone,timestamp,YES,now()
+receiving,11,updated_at,timestamp without time zone,timestamp,YES,now()
+receiving_details,1,id,uuid,uuid,NO,gen_random_uuid()
+receiving_details,2,operation_id,text,text,YES,null
+receiving_details,3,item_code,text,text,YES,null
+receiving_details,4,item_name,text,text,YES,null
+receiving_details,5,unit,text,text,YES,null
+receiving_details,6,qty_expected,numeric,numeric,YES,0
+receiving_details,7,qty_received,numeric,numeric,YES,0
+receiving_details,8,difference,numeric,numeric,YES,0
+receiving_details,9,reason,text,text,YES,null
+receiving_details,10,created_at,timestamp without time zone,timestamp,YES,now()
+stock_branches,1,id,uuid,uuid,NO,gen_random_uuid()
+stock_branches,2,branch_id,uuid,uuid,NO,null
+stock_branches,3,item_id,uuid,uuid,NO,null
+stock_branches,4,qty,numeric,numeric,NO,0
+stock_branches,5,allocated_qty,numeric,numeric,NO,0
+stock_branches,6,available_qty,numeric,numeric,YES,null
+stock_branches,7,updated_at,timestamp with time zone,timestamptz,YES,now()
+stock_voucher_details,1,id,uuid,uuid,NO,gen_random_uuid()
+stock_voucher_details,2,voucher_id,uuid,uuid,NO,null
+stock_voucher_details,3,item_id,uuid,uuid,NO,null
+stock_voucher_details,4,item_code,character varying,varchar,YES,null
+stock_voucher_details,5,item_name,character varying,varchar,YES,null
+stock_voucher_details,6,unit,character varying,varchar,YES,null
+stock_voucher_details,7,qty,numeric,numeric,NO,null
+stock_voucher_details,8,unit_price,numeric,numeric,YES,0
+stock_voucher_details,9,received_qty,numeric,numeric,YES,null
+stock_voucher_details,10,notes,text,text,YES,null
+stock_voucher_details,11,created_at,timestamp with time zone,timestamptz,YES,now()
+stock_vouchers,1,id,uuid,uuid,NO,gen_random_uuid()
+stock_vouchers,2,company_id,uuid,uuid,NO,null
+stock_vouchers,3,voucher_code,character varying,varchar,NO,null
+stock_vouchers,4,voucher_date,date,date,NO,CURRENT_DATE
+stock_vouchers,5,type,character varying,varchar,NO,null
+stock_vouchers,6,status,character varying,varchar,YES,'Draft'::character varying
+stock_vouchers,7,from_branch_id,uuid,uuid,YES,null
+stock_vouchers,8,to_branch_id,uuid,uuid,YES,null
+stock_vouchers,9,from_type,character varying,varchar,YES,null
+stock_vouchers,10,from_id,uuid,uuid,YES,null
+stock_vouchers,11,to_type,character varying,varchar,YES,null
+stock_vouchers,12,to_id,uuid,uuid,YES,null
+stock_vouchers,13,reference,character varying,varchar,YES,null
+stock_vouchers,14,notes,text,text,YES,null
+stock_vouchers,15,created_by,character varying,varchar,YES,null
+stock_vouchers,16,sent_date,timestamp with time zone,timestamptz,YES,null
+stock_vouchers,17,received_date,timestamp with time zone,timestamptz,YES,null
+stock_vouchers,18,completed_at,timestamp with time zone,timestamptz,YES,null
+stock_vouchers,19,created_at,timestamp with time zone,timestamptz,YES,now()
+stock_vouchers,20,updated_at,timestamp with time zone,timestamptz,YES,now()
+stock_vouchers,21,source,text,text,YES,'Manual'::text
