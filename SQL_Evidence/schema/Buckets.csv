@@ -1,0 +1,2 @@
+id,name,owner,created_at,updated_at,public,avif_autodetection,file_size_limit,allowed_mime_types,owner_id,type
+product-images,product-images,null,2026-05-14 03:58:52.986817+00,2026-05-14 03:58:52.986817+00,true,false,null,null,null,STANDARD
