@@ -1,5 +1,5 @@
 // send-stock-voucher – إرسال إذن مخزني وخصم المخزون
-// الإصدار 3.0 – atomic multi-item inventory transaction + CAS
+// الإصدار 3.1 – atomic multi-item inventory transaction + CAS + explicit V1 company context
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
@@ -22,7 +22,7 @@ serve(async function(req) {
 
   try {
     var rawBody = await req.text()
-    console.log("📥 send-stock-voucher v3.0 – rawBody:", rawBody)
+    console.log("📥 send-stock-voucher v3.1 – rawBody:", rawBody)
     var body = {}
     if (rawBody && rawBody.trim() !== "") {
       try { body = JSON.parse(rawBody) } catch (e) { throw new Error("صيغة JSON غير صالحة") }
@@ -39,12 +39,15 @@ serve(async function(req) {
     if (authResult.error || !authResult.data.user) throw new Error("جلسة غير صالحة")
     var user = authResult.data.user
 
-    // RAWAEA V1: company context is resolved server-side from the licensed system settings.
-    // The client never supplies company_id.
+    // RAWAEA V1: one operational company. Company context is resolved server-side
+    // from the system settings; the client never supplies company_id.
+    // .single() intentionally rejects a missing or non-single settings row rather
+    // than silently selecting an arbitrary company context.
     var settingsResult = await supabase.from("app_settings")
-      .select("company_id").limit(1).maybeSingle()
+      .select("company_id")
+      .single()
     if (settingsResult.error || !settingsResult.data?.company_id) {
-      throw new Error("سياق الشركة غير محدد في الإعدادات")
+      throw new Error("سياق الشركة غير محدد بشكل وحيد في الإعدادات")
     }
     var companyId = settingsResult.data.company_id
 
