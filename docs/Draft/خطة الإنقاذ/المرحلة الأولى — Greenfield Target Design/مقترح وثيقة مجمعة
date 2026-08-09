@@ -1,0 +1,1275 @@
+RAWAEA ERP
+المرحلة الأولى — Greenfield Target Design
+Central Inventory, Stock Movement & Manual Stock Voucher Architecture — V1
+
+الحالة: Target Design Baseline — قبل Reality Mapping والتنفيذ
+النطاق: Inventory + Central Stock Movement + Manual Stock Vouchers + Direct Custody + Adjustments/Counts
+قاعدة حاكمة: لا Original ولا Current ولا Migration تمثل الـTarget.
+المنهج: Understand → Prove → Design → Implement → Validate → Close
+
+1. الهدف من المرحلة
+
+هذه المرحلة لا تهدف إلى إصلاح send-stock-voucher أو أي Edge Function منفردة.
+
+الهدف هو الإجابة أولًا، وكأن النظام غير موجود:
+
+كيف يجب أن يعمل Inventory في RAWAEA إذا كنا نبنيه من الصفر وفق النموذج الصحيح؟
+
+ثم فقط بعد تثبيت هذا التصميم يتم إسقاط:
+
+TARGET
+   ↓
+ORIGINAL
+   ↓
+CURRENT
+   ↓
+EVIDENCE
+   ↓
+GAP
+   ↓
+IMPLEMENTATION
+
+وهذا هو الحاجز الأساسي ضد تكرار دورة:
+
+تعديل
+→ اكتشاف نقص
+→ اكتشاف Schema
+→ اكتشاف Business Rule
+→ تعديل Migration
+→ اكتشاف أثر جانبي
+→ الرجوع للخلف
+→ تعديل جديد
+
+الوثائق الأربع تتفق في جوهرها على أن Target يجب أن يثبت قبل العودة للكود.
+
+2. المبدأ المعماري الأعلى
+
+RAWAEA لا يجب أن يكون مجموعة تطبيقات، كل تطبيق منها يحتوي داخله على ERP مصغر.
+
+النموذج المستهدف:
+
+                         RAWAEA MASTER SYSTEM
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+             Master / Decisions          Central Governance
+                    │                           │
+                    └─────────────┬─────────────┘
+                                  │
+                         INVENTORY DOMAIN
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+             DOCUMENT LAYER              MOVEMENT LAYER
+             Stock Voucher              Central Stock Engine
+                    │                           │
+                    └─────────────┬─────────────┘
+                                  │
+        ┌─────────────┬────────────┼────────────┬─────────────┐
+        ▼             ▼            ▼            ▼             ▼
+   Warehouse       Van Sales    Purchasing    POS/Sales     Returns
+   App             App          App           App           App
+        │             │            │            │             │
+        └─────────────┴────────────┴────────────┴─────────────┘
+                                  │
+                                  ▼
+                         CENTRAL INVENTORY CORE
+                                  │
+                    ┌─────────────┼─────────────┐
+                    ▼             ▼             ▼
+                 Stock       Inventory Log    Audit/Effects
+
+التطبيقات التشغيلية هي:
+
+Event Sources / Execution Clients
+
+وليست مصادر مستقلة للحقيقة.
+
+والوثيقة الأولى تصوغ هذا بوضوح: النظام الأم يملك الـSource of Truth والسياق، بينما التطبيقات التشغيلية ترسل الأحداث وتنفذ العمل، والحقيقة المخزنية النهائية تملكها منظومة Inventory المركزية.
+
+3. لماذا Inventory هو نقطة البداية؟
+
+Inventory ليس جدول:
+
+stock_branches.qty
+
+فقط.
+
+الخطأ المخزني ينتشر إلى:
+
+Stock
+ ↓
+Sales Availability
+ ↓
+Vehicle Custody
+ ↓
+Returns
+ ↓
+Purchasing
+ ↓
+Accounting
+ ↓
+Customer/Supplier Balances
+ ↓
+Reports
+
+لذلك فإن إصلاح Inventory يعني إعادة تأسيس القاعدة المشتركة التي يجب أن تعتمد عليها كل هذه المسارات، وليس إصلاح Function منفردة.
+
+وهذا يفسر لماذا يجب أن يكون Inventory أول Domain يعاد تصميمه حول قلب مركزي موحد.
+
+4. النظام الأم والتطبيقات التشغيلية
+4.1 النظام الأم
+
+النظام الأم يملك:
+
+Company
+Branches
+Warehouses
+Items
+Customers
+Suppliers
+Users
+Roles
+Policies
+Master Data
+القرارات المركزية
+Governance
+Accounting structure
+
+ولا يجوز للتطبيق التشغيلي أن ينشئ أو يقرر هذه الكيانات من تلقاء نفسه.
+
+4.2 التطبيق التشغيلي
+
+التطبيق التشغيلي يملك:
+
+جمع بيانات العملية.
+واجهة المستخدم.
+بدء Business Event.
+تنفيذ Workflow الخاص به.
+إرسال طلب Domain Action.
+عرض النتيجة.
+
+لكنه لا يملك:
+
+مصدرًا ثانيًا للمخزون.
+منطق Mutation مستقلًا.
+Inventory Log مستقلًا.
+قواعد مخزون خاصة به.
+حقيقة بديلة عن stock_branches.
+
+الوثائق الأربع تضع هذا الفصل كقاعدة مركزية.
+
+5. النموذج الثلاثي للمخزون
+
+يجب الفصل بين ثلاثة أشياء:
+
+5.1 Document
+
+المستند الذي يشرح:
+
+لماذا حدثت العملية؟
+
+مثل:
+
+Stock Voucher TV-1001
+5.2 Movement
+
+الحركة الفيزيائية الفعلية:
+
+Warehouse A
+      ↓ 50
+Warehouse B
+5.3 Stock State
+
+الحالة الناتجة:
+
+Warehouse A = -50
+Warehouse B = +50
+
+إذن:
+
+Voucher ≠ Movement
+Movement ≠ Stock State
+Stock Balance ≠ Movement History
+
+لكنها مترابطة:
+
+Business Event
+      ↓
+Document
+      ↓
+Movement
+      ↓
+Stock State
+      +
+Inventory Log
+
+وهذا الفصل ضروري حتى لا يتحول تغيير حالة Voucher إلى حركة مخزنية ثانية.
+
+6. Physical Stock / Allocated Stock / Available Stock
+Physical Stock
+
+يمثل الكمية الفعلية الموجودة تحت سيطرة الموقع أو العهدة:
+
+stock_branches.qty
+Allocated Stock
+
+يمثل الكمية المحجوزة أو المخصصة:
+
+stock_branches.allocated_qty
+
+وهي ليست حركة مخزنية فعلية.
+
+Available Stock
+
+المتاح التشغيلي:
+
+Available
+=
+Physical Qty
+-
+Allocated Qty
+
+ولا يجوز تخزين available_qty كحقيقة ثانية إذا كانت مشتقة.
+
+هذه من أهم الثوابت في Target.
+
+7. Source of Truth
+المجال	Target Source of Truth
+Physical Stock	stock_branches.qty
+Reserved Stock	stock_branches.allocated_qty
+Available Stock	Physical − Allocated
+Movement History	inventory_log
+Voucher Header	stock_vouchers
+Voucher Details	stock_voucher_details
+Sales Transaction	Sales Domain
+Runsheet	Runsheet Domain
+
+والفصل المهم هو:
+
+stock_branches
+    =
+Current Operational State
+
+inventory_log
+    =
+Historical Movement / Audit Record
+
+والأنظمة المؤسسية الناضجة تستخدم هذا الفصل أيضًا؛ فالوثائق المقارنة تشير إلى Material Documents/Goods Movements في SAP، وStock Moves في Odoo، وStock Ledger Entry في ERPNext، مع وجود الرصيد الحالي كحالة تشغيلية.
+
+لكن لا يجوز نسخ هذه الأنظمة حرفيًا؛ نستخدم النمط الصناعي المثبت ونكيفه مع RAWAEA.
+
+8. قاعدة عدم اختراع العجلة
+
+Target RAWAEA يجب أن يبنى من:
+
+Industry Proven Patterns
+          +
+RAWAEA Business Reality
+          +
+RAWAEA Differentiation
+          =
+RAWAEA Target Design
+
+الوثائق تشير إلى الاستفادة من:
+
+SAP
+SAP Business One
+Odoo
+Microsoft Dynamics
+ERPNext
+Oracle
+
+بحسب المجال الذي تكون فيه المقارنة مفيدة.
+
+القاعدة ليست:
+
+نقل تصميم المنافس.
+
+بل:
+
+لا نخترع العجلة، ولا نركب عجلة لا تناسب الروائع.
+
+9. Central Inventory Business Core
+
+القلب المركزي ليس بالضرورة Function واحدة.
+
+هو:
+
+Domain Capability واحدة مسؤولة منطقيًا عن Physical Stock Movement.
+
+يمكن داخليًا أن يتكون من عدة primitives، لكن لا يجوز أن يكون لدينا عدة Engines متنافسة.
+
+النموذج المستهدف:
+
+Central Inventory Engine
+        │
+        ├── Resolve Context
+        ├── Authorization Boundary
+        ├── Validate
+        ├── Determine Movement
+        ├── Lock State
+        ├── Validate Availability
+        ├── Apply Mutation
+        ├── Write Inventory Log
+        ├── Audit
+        └── Commit
+
+والـTarget الحالي يسمي الـatomic primitive المقترح:
+
+post_stock_movement
+
+مع اعتبار الاسم نفسه قابلًا للتثبيت النهائي أثناء Evidence/Implementation، وليس قرارًا يلزم الكود الحالي بالاسم.
+
+10. توزيع المسؤوليات
+المسؤولية	المالك المستهدف
+HTTP / CORS	Edge Function
+Authentication	Edge/API Boundary
+Request Validation	Edge Function
+Company Context	Server-side / Central Context
+Authorization	Domain/Application Boundary حسب القرار المعتمد
+Movement Semantics	Central Inventory Core
+Source Availability	Central Inventory Core
+Physical Stock Mutation	Central Inventory Core
+Inventory Log	Central Inventory Core
+Stock Locking	Database Atomic Primitive
+Concurrency Control	Database/Movement Engine
+Reservation	Separate Reservation Operation
+Voucher Workflow	Voucher/Domain Functions
+Accounting Posting	Accounting Domain Engine
+UI	Operational Application
+
+وهنا نقطة حاسمة:
+
+ليس الهدف أن تصبح PostgreSQL هي الـERP.
+
+كما أن الهدف ليس أن تصبح كل Edge Function ERP مستقلًا.
+
+النموذج:
+
+Application
+     ↓
+Domain Service
+     ↓
+Central Inventory Business Core
+     ↓
+Database Atomic Primitive
+11. مصادر الحركات المخزنية
+
+هناك نوعان من مصادر الأحداث:
+
+A — Direct Inventory Events
+
+حركة تبدأ أساسًا من قرار مخزني مباشر:
+
+Transfer
+DirectSale
+DirectReturn
+SupplierReturn
+Scrap
+Adjustment
+Counting
+B — Operationally Originated Inventory Events
+
+الحركة تنتج عن Domain تشغيلي آخر:
+
+Purchase Receipt
+POS Sale
+Van Sale
+Loading
+Unloading
+Customer Return
+Supplier Return
+Delivery
+
+لكن:
+
+Event Source ≠ Inventory Owner
+
+فالتطبيق الذي بدأ الحدث لا يملك الحق في اختراع Stock Mutation خاص به.
+
+12. Manual Stock Vouchers
+
+الأذونات المخزنية اليدوية هي:
+
+Business Documents رسمية لتنفيذ حركات مخزون/عهدة بين أطراف أو مواقع محددة.
+
+وليست CRUD فقط.
+
+وليست Runsheet.
+
+وليست Sales Invoice.
+
+وليست مجرد شاشة Warehouse.
+
+النموذج:
+
+Business Event
+      ↓
+Manual Stock Voucher
+      ↓
+Validated Domain Action
+      ↓
+Central Inventory Engine
+      ↓
+Stock Effect
+      ↓
+Inventory Log
+      ↓
+Audit
+13. الأنواع الستة
+
+Target V1 يتعامل مع:
+
+Transfer
+DirectSale
+DirectReturn
+SupplierReturn
+Scrap
+Adjustment
+
+وهذا متسق بين الوثائق، مع التأكيد أن Adjustment له مسار منطقي مختلف عن دورة التحويل التقليدية.
+
+14. Transfer
+
+المعنى:
+
+Source
+   ↓
+Transfer
+   ↓
+Destination
+
+مثال:
+
+Warehouse A
+     ↓
+Branch B
+
+لا توجد عملية بيع.
+
+لا توجد Customer Sale.
+
+ولا يوجد خروج من ملكية الشركة.
+
+هو إعادة توزيع داخلي للمخزون/العهدة.
+
+النتيجة المستهدفة:
+
+Source      ↓
+Destination ↑
+Inventory Log
+Audit
+
+ويجب أن يمثل طرفا الحركة أثرًا تجاريًا/مخزنيًا متسقًا واحدًا.
+
+15. DirectSale
+
+هذه من أهم نقاط RAWAEA.
+
+DirectSale ليس Customer Sale.
+
+هو:
+
+تحميل عهدة البيع المباشر.
+
+المسار:
+
+WAREHOUSE
+    ↓
+DirectSale Voucher
+    ↓
+Vehicle / Direct Sales Representative Custody
+    ↓
+Field Sales
+    ↓
+Customer
+
+أي أن البضاعة تنتقل من المخزن إلى عهدة تشغيلية تحت مسؤولية السيارة/المندوب.
+
+ثم يأتي البيع لاحقًا:
+
+VanSale / Field Sale
+
+ليستهلك من تلك العهدة.
+
+وهذا الفصل مثبت في Target Design.
+
+16. DirectReturn
+
+هو العكس المنطقي لـDirectSale:
+
+Vehicle / Representative Custody
+              ↓
+        DirectReturn
+              ↓
+           Warehouse
+
+يمثل:
+
+إعادة المتبقي أو المرتجع من عهدة البيع المباشر.
+
+وليس:
+
+Customer Sales Return
+
+فالفرق:
+
+DirectReturn
+=
+Custody → Warehouse
+
+SalesReturn
+=
+Customer → Sales/Inventory Process
+
+وهذا فصل حاكم في النموذج.
+
+17. SupplierReturn
+
+المسار:
+
+Warehouse
+    ↓
+SupplierReturn
+    ↓
+Supplier
+
+وهو خروج حقيقي من مخزون الشركة إلى طرف خارجي.
+
+وله آثاره التجارية والمحاسبية الخاصة.
+
+ولا يجوز معاملته كتحويل داخلي.
+
+18. Scrap
+
+المسار:
+
+Warehouse
+    ↓
+Scrap / Loss
+
+أي خروج المخزون دون انتقال إلى موقع تشغيلي آخر.
+
+لذلك يحتاج إلى:
+
+Stock Effect
+Inventory Log
+Audit
+Financial consequence وفق Accounting Target
+
+ولا يجوز اختزاله في Transfer.
+
+19. Adjustment
+
+Adjustment هو:
+
+تسوية فرق مثبت بين الرصيد النظامي والواقع الفعلي.
+
+مثال:
+
+System = 100
+Physical = 97
+
+Adjustment = -3
+
+أو:
+
+System = 100
+Physical = 103
+
+Adjustment = +3
+
+وهو ليس وسيلة بديلة لتنفيذ Transfer.
+
+ويجب أن يبقى مسار:
+
+bulk-stock-adjustment
+save-inventory-count
+
+منفصلًا منطقيًا عن دورة Manual Voucher التقليدية، مع إمكانية استخدام نفس Central Movement Engine عند اعتماد ذلك في Event Contract.
+
+20. Voucher Lifecycle
+
+الدورة المستهدفة:
+
+CREATE
+   ↓
+DRAFT
+   ↓
+SEND
+   ↓
+RECEIVE
+   ↓
+COMPLETE
+
+مع:
+
+DRAFT
+   ↓
+CANCEL
+
+لكن الأهم:
+
+Lifecycle ليس هو Movement.
+
+Create
+
+ينشئ المستند.
+
+Stock Effect = NONE
+Send
+
+ينقل المستند إلى مرحلة التنفيذ.
+
+لكن لا نفترض أن Send يخصم أو يضيف قبل تحديد Event Contract لكل Voucher Type.
+
+Receive
+
+يثبت استلام الطرف الآخر عندما تكون الحركة تتطلب ذلك.
+
+Complete
+
+يغلق العملية.
+
+ولا يجوز أن يصبح:
+
+Complete
+→ another stock deduction
+
+بدون Business Event صريح.
+
+Cancel
+
+قبل الحركة:
+
+Cancel
+→ no stock movement
+
+بعد الحركة:
+
+Cancel
+≠ DELETE
+
+بل يحتاج إلى حركة عكسية محددة إذا كانت Business Rules تسمح بذلك.
+
+هذا من أهم الثوابت في الوثيقة الرابعة.
+
+21. المستند لا يساوي الحركة
+
+Target:
+
+Voucher
+   │
+   ├── Header
+   ├── Details
+   │
+   └── Movement Event
+          │
+          ├── Stock Mutation
+          ├── Inventory Log
+          └── Audit
+
+السبب:
+
+المستند قد يكون Draft، أو Cancelled، أو في مرحلة انتقالية.
+
+أما الحركة الفيزيائية فهي حقيقة منفصلة يجب أن تُنشر مرة واحدة فقط.
+
+22. Atomicity
+
+أي Physical Stock Movement يجب أن يكون Atomic:
+
+Validation
+   ↓
+Stock Mutation
+   ↓
+Inventory Log
+
+إما:
+
+ALL SUCCESS
+
+أو:
+
+ROLLBACK
+
+مثال:
+
+Item A ✓
+Item B ✓
+Item C ✗ insufficient
+Item D
+Item E
+
+النتيجة:
+
+A = unchanged
+B = unchanged
+C = failure
+D = unchanged
+E = unchanged
+Log = no committed movement
+Voucher = no invalid transition
+
+ولا يجوز أن ينجح تحديث stock_branches ثم يفشل inventory_log.
+
+الـTarget يضع هذا داخل database-level atomic operation/RPC مثل post_stock_movement.
+
+23. Concurrency
+
+Target لا يعتبر:
+
+FOR UPDATE
+
+كافيًا بمجرد وجوده.
+
+ولا يعتبر:
+
+CAS
+
+دليلًا تجريبيًا كافيًا.
+
+المطلوب:
+
+إذا:
+
+Available = 10
+
+وجاء:
+
+Request A = 7
+Request B = 7
+
+فالنتيجة يجب ألا تكون:
+
+A = SUCCESS
+B = SUCCESS
+
+مع تجاوز المخزون.
+
+بل يجب أن يضمن القلب المركزي أن إحدى المعاملتين ترى أثر الأخرى وتفشل أو تتصرف وفق Business Rule.
+
+إثبات ذلك يكون باختبار Concurrency حقيقي، وليس بالاستنتاج من الكود.
+
+24. Idempotency
+
+نفس Business Event لا يجوز أن ينفذ مرتين.
+
+مثال:
+
+Voucher #123
+Draft
+
+أول إرسال:
+
+Stock Effect
++
+Log
++
+Draft → Sent
+
+إعادة الطلب نفسه:
+
+NO SECOND MOVEMENT
+
+ويجب أن تكون الحماية في Domain/Core Boundary، لا في الواجهة فقط.
+
+25. Inventory Log
+
+inventory_log ليس Debug Log.
+
+هو سجل رقابي للحركة.
+
+يجب أن تستطيع الحركة الإجابة عن:
+
+ماذا تحرك؟
+من أين؟
+إلى أين؟
+كم؟
+متى؟
+لماذا؟
+بواسطة من؟
+بأي مستند؟
+لأي Company؟
+ما نوع الحركة؟
+ما أثرها؟
+
+والقاعدة:
+
+Central Movement Engine
+       ↓
+Inventory Log
+
+وليس:
+
+Every Edge Function
+       ↓
+its own INSERT inventory_log
+
+وإلا عاد النظام إلى Distributed Business Logic.
+
+26. Accounting Boundary
+
+Inventory والمحاسبة مجالان مرتبطان، لكنهما ليسا Domain واحدًا.
+
+Inventory Engine يملك:
+
+Physical Stock Effect
+Inventory Audit
+
+أما:
+
+Journal
+COGS
+Revenue
+Accounting Balances
+
+فتملكها Accounting Domain Engine.
+
+ولا يجوز تكرار Accounting Posting داخل:
+
+Voucher
+Sales
+Settlement
+UI
+Inventory Functions
+
+والوثائق صريحة في أن تفاصيل Chart of Accounts وJournal Line Mapping لا تثبتها هذه المرحلة؛ يجب أن تكون في Target Design مستقل للمحاسبة.
+
+27. Van Sales Boundary
+
+الفصل المستهدف:
+
+DirectSale
+   =
+Load Custody
+
+VanSale
+   =
+Sell From Custody
+
+DirectReturn
+   =
+Return Custody
+
+Settlement
+   =
+Reconcile Van Sales
+
+هذه أحداث مستقلة.
+
+والأهم:
+
+DirectSale ≠ Customer Sale
+
+و:
+
+VanSale does not create custody
+
+بل يستهلك العهدة التي أنشأتها حركة DirectSale.
+
+كما أن Runsheet لا يصبح المالك الخفي لمعنى DirectSale أو DirectReturn.
+
+28. Runsheet Boundary
+
+Manual Stock Vouchers ليست Runsheet.
+
+Runsheet Domain مستقل.
+
+وبالتالي:
+
+Manual Voucher
+      ≠
+Runsheet
+
+حتى لو كان هناك تكامل بينهما.
+
+لا يجوز أن نعيد تعريف Manual Voucher semantics فقط لأن إحدى العمليات التشغيلية تستخدم Runsheet.
+
+29. Application Boundaries
+Domain/Application	مسموح له	ممنوع عليه
+Manual Voucher	جمع البيانات وطلب Lifecycle Action	Stock Mutation مستقل
+Van Sales	تنفيذ Sales Workflow وطلب Domain Actions	إنشاء Inventory Engine
+Warehouse	تنفيذ Warehouse Workflow واستدعاء الحركة المعتمدة	محرك مخزون ثانٍ
+Purchasing	Initiate Purchase Events	Ad-hoc Stock Mutation
+Returns	Initiate Return Events	امتلاك Stock Truth
+POS	Initiate Sale Event	تعديل المخزون بمنطق خاص
+Delivery	تنفيذ Delivery Workflow	امتلاك Stock Truth
+Counting	جمع/اعتماد نتيجة الجرد	تجاوز Adjustment Engine
+
+هذا هو جوهر One Central Inventory Core.
+
+30. Closed Movement Vocabulary
+
+الحركات ليست نصوصًا حرة.
+
+Target vocabulary يتضمن:
+
+PurchaseIn
+TransferOut
+TransferIn
+Loading
+Unloading
+POSSale
+VanSale
+SalesReturn
+PurchaseReturn
+InventoryIncrease
+InventoryDecrease
+Adjustment
+
+لكن هناك نقطة يجب عدم تحويلها إلى قرار كاذب:
+
+الاستخدام النهائي لـLoading وUnloading مقابل TransferOut وTransferIn في Workflow محدد يجب أن يثبت في Event Contract.
+
+أي:
+
+لا نقرر من الاسم.
+
+وهذا تحديدًا من النقاط التي تركتها الوثائق مفتوحة عمدًا.
+
+31. Company / Branch / Stock Isolation
+
+النموذج المنطقي:
+
+Company
+   ↓
+Branch
+   ↓
+Warehouse / Custody
+   ↓
+Item
+   ↓
+Stock
+
+لكن لا يجوز اعتبار FK منفردًا دليلًا كافيًا على العزل.
+
+يجب إثبات:
+
+Company Context
+      ↓
+Voucher
+      ↓
+Authoritative Branch
+      ↓
+Stock Branch
+      ↓
+Item
+
+ولا يجوز أن يكون هناك Cross-Company Stock Mutation.
+
+أي تفصيل غير مثبت من Schema/Evidence يبقى:
+
+UNKNOWN
+
+ولا يتم ملؤه بالتخمين.
+
+32. Reservation Boundary
+
+Reservation ليست Movement.
+
+Reservation
+    ↓
+allocated_qty
+
+بينما:
+
+Movement
+    ↓
+qty
+
+إذن:
+
+Movement Engine
+      ↓
+Physical Qty
+
+Reservation Engine
+      ↓
+Allocated Qty
+
+ولا يجوز أن تستخدم Function allocated_qty كبديل عن الحركة الفيزيائية.
+
+33. Core Invariants
+
+هذه invariants لا يجوز كسرها:
+
+كل Physical Stock Mutation له مسار Posting مركزي واحد.
+كل Posted Movement له inventory_log.
+لا توجد حركة مرتين بسبب تغيير حالتين.
+DirectSale ليست Customer Sale.
+DirectReturn ليست Customer Sales Return.
+VanSale يستهلك Custody ولا ينشئها.
+allocated_qty Reservation State.
+التطبيقات ليست مصدرًا ثانيًا للحقيقة.
+Runsheet لا يملك Manual Voucher Semantics.
+Stock Mutation وInventory Log يجب أن يكونا Atomic.
+Concurrency يجب إثبات سلامتها.
+Cancellation لا يمحو التاريخ.
+Adjustment لا يتحول إلى Transfer مقنع.
+لا يتم اعتماد Schema assumption غير مثبت.
+لا يتم تنفيذ Function قبل تحديد Event وSource of Truth وSide Effects.
+
+الوثائق الثلاث الأولى والرابعة تتلاقى بصورة واضحة جدًا حول هذه invariants.
+
+34. Target Testing Philosophy
+
+الاختبارات يجب ألا تكون مرحلة اكتشاف الـBusiness Model.
+
+الـTest Contract يأتي بعد Target Design وقبل Implementation.
+
+المطلوب لاحقًا إثبات:
+
+Atomicity
+Multi-item
+A ✓
+B ✓
+C ✗
+
+يجب أن يعود كل شيء كما كان.
+
+Idempotency
+Same Voucher
+Send
+Send again
+
+واحد فقط ينفذ.
+
+Concurrency
+
+حركتان متزامنتان لا تستهلكان نفس المخزون.
+
+Isolation
+
+لا يمكن لحركة في Company A الوصول إلى Stock في Company B.
+
+Lifecycle
+
+لا يمكن:
+
+Complete → second movement
+
+ولا:
+
+Cancel → erase historical movement
+
+إلا وفق Business Event عكسي معتمد.
+
+35. Evidence Gate
+
+قبل أي Implementation يجب إثبات:
+
+جميع Edge Functions المؤثرة في المخزون.
+كل كتابة إلى stock_branches.qty.
+كل كتابة إلى stock_branches.allocated_qty.
+كل كتابة إلى inventory_log.
+كل Voucher Lifecycle Function.
+DirectSale end-to-end.
+DirectReturn end-to-end.
+VanSale Consumption.
+الفصل عن Runsheet.
+Accounting Side Effects.
+Company/Branch Ownership.
+Atomicity.
+Concurrency.
+Idempotency.
+
+وأي شيء لا تثبته:
+
+Database Schema
++
+Edge Functions
++
+Applications
++
+Approved Target Design
+
+يبقى:
+
+UNKNOWN
+
+وهذه ليست خانة فشل؛ بل آلية حماية من الاختراع.
+
+36. Implementation Gate
+
+لا يجوز تعديل Function لأنها "تبدو خاطئة".
+
+قبل تعديلها يجب تحديد:
+
+Intended Domain Event
+Source of Truth
+Movement Type
+Transaction Boundary
+Inputs
+Outputs
+Side Effects
+Authorization
+Company Context
+Branch Context
+Idempotency
+Concurrency
+
+ثم:
+
+Target
+  ↓
+Evidence Matrix
+  ↓
+Schema Verification
+  ↓
+Function Mapping
+  ↓
+Implementation
+  ↓
+Test Contract
+  ↓
+Validation
+  ↓
+Close
+
+وهذه من أقوى النقاط المشتركة بين الوثائق.
+
+37. ما هو خارج نطاق هذه المرحلة
+
+هذه الوثيقة لا تعيد تعريف:
+
+Detailed Sales Order Architecture.
+Detailed Runsheet Architecture.
+Full Accounting Chart.
+Detailed Journal Mapping.
+Driver Ledger Target.
+UI Redesign.
+PWA Implementation Details.
+Historical Data Migration.
+Performance Tuning غير المرتبط بحدود Inventory Movement.
+
+لكن هذه المجالات قد تتفاعل مع Inventory ويجب لاحقًا إثبات نقاط التكامل بينها وبين القلب المركزي.
+
+38. القرار المعماري الموحد
+
+بعد دمج الرؤى الأربع، يكون القرار:
+
+القرار	Target الموحد
+Inventory	Domain مركزي
+Physical Stock Truth	stock_branches.qty
+Reservation Truth	stock_branches.allocated_qty
+Available	Derived
+Movement History	inventory_log
+Voucher Header	stock_vouchers
+Voucher Lines	stock_voucher_details
+Movement Authority	Central Inventory Engine
+Atomic Primitive	post_stock_movement كمفهوم مستهدف
+Manual Voucher Lifecycle	Create → Send → Receive → Complete → Cancel
+DirectSale	Warehouse → Vehicle/Representative Custody
+VanSale	Sell From Custody
+DirectReturn	Custody → Warehouse
+SupplierReturn	Warehouse → Supplier
+Scrap	Authorized disposal
+Adjustment	Authorized reconciliation
+Runsheet	Separate Domain
+Accounting	Separate Central Accounting Domain
+Applications	Event Sources / Execution Clients
+allocated_qty	Separate Reservation Domain
+Implementation	Evidence-gated
+39. ما تم دمجه من الوثائق الأربع
+
+الوثيقة الأولى أضافت الرؤية الأوسع: الفرق بين Direct Inventory Events وOperationally-Originated Events، وفصل Document/Movement/Stock State، وضرورة الاستفادة من SAP وDynamics وغيرها بدل اختراع المفاهيم.
+
+الوثيقة الثانية أضافت التفصيل التشغيلي الأوسع للأنواع الستة، خصوصًا DirectSale كـCustody Loading، DirectReturn كـCustody Return، وAdjustment كمسار مستقل، وربطت ذلك بتجارب SAP/Odoo/Dynamics/ERPNext.
+
+الوثيقة الثالثة شددت على الفصل بين Inventory Domain وDomains الأخرى، وعلى أن Voucher هو Business Document وليس الحركة نفسها، وعلى أن Send / Receive / Complete / Cancel يجب ألا تكون مجرد أسماء تقنية.
+
+الوثيقة الرابعة قدمت أكثر صياغة ناضجة ومنضبطة للـBaseline: Source of Truth، Atomicity، Application Boundaries، Accounting Boundary، Van Sales Boundary، Core Invariants، Validation Contract، وImplementation Gate.
+
+40. قرار CTO بعد الدمج
+
+الوثائق الأربع متوافقة في الاتجاه المعماري الأساسي ولا يوجد بينها تعارض جوهري يستدعي اختيار وثيقة وإلغاء الأخرى.
+
+لكن الدمج يكشف أن الـTarget يحتاج الآن إلى تحويل بعض الأفكار العامة إلى Contracts قابلة للإثبات قبل أي كود.
+
+وأهمها:
+
+TARGET ثابت
+One Central Inventory Business Core
+TARGET ثابت
+Applications = Event Sources
+TARGET ثابت
+Applications ≠ Inventory Truth
+TARGET ثابت
+qty ≠ allocated_qty
+TARGET ثابت
+DirectSale ≠ Customer Sale
+TARGET ثابت
+DirectReturn ≠ Customer Sales Return
+TARGET ثابت
+VanSale consumes custody
+TARGET ثابت
+Runsheet ≠ Manual Voucher Owner
+TARGET ثابت
+Movement + Inventory Log = Atomic
+TARGET ثابت
+Original / Current ≠ Target
+
+أما النقاط التي لا ينبغي لنا تحويلها إلى "قرارات" قبل الإثبات فهي خصوصًا:
+
+الشكل النهائي لتمثيل Vehicle/Representative Custody في Schema.
+mapping الدقيق بين Loading/Unloading وTransferOut/TransferIn في كل Workflow.
+تفاصيل Authorization.
+التفاصيل الدقيقة لـCancel بعد Posting.
+تفاصيل Accounting Mapping.
+أي Company/Branch relationship غير مثبتة بالـSchema.
+
+هذه تبقى PROVE REQUIRED / UNKNOWN.
+
+41. النتيجة النهائية للمرحلة الأولى
+
+الـGreenfield Target Design الموحد أصبح الآن:
+
+                         RAWAEA MASTER SYSTEM
+                                  │
+                                  ▼
+                     CENTRAL INVENTORY DOMAIN
+                                  │
+             ┌────────────────────┴────────────────────┐
+             │                                         │
+      DOCUMENT / VOUCHER                         MOVEMENT ENGINE
+             │                                         │
+             │                                  Validate / Authorize
+             │                                         │
+             │                                  Lock / Availability
+             │                                         │
+             │                                  Physical Mutation
+             │                                         │
+             │                                  Inventory Log
+             │                                         │
+             │                                      Audit
+             │                                         │
+             └────────────────────┬────────────────────┘
+                                  ▼
+                         CURRENT STOCK STATE
+                                  │
+                         stock_branches.qty
+                                  +
+                         allocated_qty
+
+ثم تدخل الأحداث من:
+
+Manual Vouchers
+Purchasing
+POS
+Van Sales
+Loading
+Unloading
+Returns
+Delivery
+Adjustments
+Counting
+
+لكن كلها تنتهي عند:
+
+CENTRAL INVENTORY BUSINESS CORE
+
+وليس عند مجموعة منطق مخزون مستقلة داخل كل Function.
+
+وهذا هو التصميم الذي ينبغي أن يكون المعيار الذي سنقيس عليه Original وCurrent لاحقًا، وليس العكس.
