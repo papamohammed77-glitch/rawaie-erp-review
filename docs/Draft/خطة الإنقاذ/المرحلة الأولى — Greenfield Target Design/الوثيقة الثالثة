@@ -1,0 +1,850 @@
+# TARGET — RAWAEA CENTRAL INVENTORY & STOCK MOVEMENT DESIGN
+
+**Status:** Target Design
+**Purpose:** المرجع التصميمي المركزي لنطاق Inventory وStock Movement
+**Scope:** Stock Movement + Manual Stock Vouchers
+**Lifecycle:** Create → Send → Receive → Complete → Cancel
+**Related Movements:** Transfer / Direct Sale / Supplier Return / Direct Return
+
+---
+
+# 1. DESIGN OBJECTIVE
+
+يهدف هذا التصميم إلى إنشاء نموذج مركزي وواضح لحركة المخزون في RAWAEA، بحيث تكون **الحركة المخزنية Business Event محددًا**، ويكون لها مسار Lifecycle واضح، ومصدر حقيقة واحد، وأثر مخزني قابل للتتبع.
+
+لا يتم بناء أو تعديل أي Edge Function منطقية قبل تثبيت هذا النموذج.
+
+المبدأ الحاكم:
+
+> **One Stock Event → One Business Responsibility → One Stock Effect → One Inventory Record → One Audit Trail**
+
+---
+
+# 2. INVENTORY DOMAIN BOUNDARY
+
+نطاق Inventory مسؤول عن:
+
+* الكميات الفعلية الموجودة في المخازن والعهد المخزنية.
+* انتقال الملكية/المسؤولية التشغيلية عن البضاعة بين الأطراف المخزنية.
+* تسجيل حركات المخزون.
+* دورة الأذونات المخزنية اليدوية.
+* التحقق من إمكانية تنفيذ الحركة.
+* تسجيل الأثر النهائي للحركة.
+
+ولا يعتبر Inventory مسؤولًا بذاته عن:
+
+* إنشاء Order.
+* تنفيذ عملية البيع التجارية.
+* تحصيل النقد.
+* التسوية المالية.
+* احتساب العمولات.
+
+هذه الأحداث قد **تنتج Stock Movement**، لكن الـBusiness Domain الذي ينشئ الحدث يظل منفصلًا عن محرك المخزون.
+
+---
+
+# 3. CORE CONCEPTS
+
+## 3.1 Physical Stock
+
+يمثل الكمية الفعلية الموجودة في موقع مخزني.
+
+المفهوم الأساسي:
+
+```text
+Physical Stock = Actual Quantity
+```
+
+ويمثل `qty` المخزون الفعلي وفق النموذج الذي تم توثيقه سابقًا.
+
+---
+
+## 3.2 Allocated Stock
+
+`allocated_qty` يمثل كمية محجوزة/مخصصة وليست حركة مخزنية فعلية.
+
+لذلك:
+
+```text
+Allocated Stock ≠ Physical Stock Movement
+```
+
+ولا يتم التعامل مع Reservation باعتباره خروجًا فعليًا للبضاعة.
+
+---
+
+## 3.3 Available Stock
+
+المتاح للاستخدام التشغيلي يعتمد على الفرق بين المخزون الفعلي والمخصص:
+
+```text
+Available = Physical Qty - Allocated Qty
+```
+
+ولا يجوز اعتبار Available كمية مستقلة يتم تخزينها كحقيقة ثانية إذا كانت مشتقة من الكميتين الأساسيتين.
+
+---
+
+# 4. CENTRAL STOCK MOVEMENT ENGINE
+
+يجب أن يكون هناك **محرك مركزي واحد** لتنفيذ Stock Movements.
+
+المفهوم المستهدف:
+
+```text
+post_stock_movement
+```
+
+وظيفته التصميمية:
+
+1. استقبال Business Stock Event محدد.
+2. التحقق من الأطراف والكميات.
+3. التحقق من إمكانية تنفيذ الحركة.
+4. تنفيذ التغيير المخزني بصورة Atomic.
+5. تسجيل الحركة في Inventory Log.
+6. إنشاء Audit Trail المرتبط بها.
+7. إعادة نتيجة الحركة للـBusiness Event الذي طلبها.
+
+ولا تحتوي التطبيقات على منطق مستقل لتعديل المخزون.
+
+---
+
+# 5. STOCK MOVEMENT IS AN EVENT
+
+كل حركة مخزنية يجب أن تكون معرفة بنوع Business Event واضح.
+
+الأنواع المعتمدة في التصميم الحالي:
+
+```text
+PurchaseIn
+TransferOut
+TransferIn
+
+Loading
+Unloading
+
+POSSale
+VanSale
+
+SalesReturn
+PurchaseReturn
+
+InventoryIncrease
+InventoryDecrease
+
+Adjustment
+```
+
+أما مسارات الأذونات المخزنية اليدوية فتستخدم:
+
+```text
+Transfer
+DirectSale
+SupplierReturn
+DirectReturn
+```
+
+ويجب قبل التنفيذ النهائي تحديد mapping رسمي بين أسماء الـVoucher Events وبين Stock Movement Events.
+
+لا يتم افتراض هذا الـmapping قبل اعتماده.
+
+---
+
+# 6. MANUAL STOCK VOUCHER
+
+الأذن المخزني اليدوي هو **Business Document** يمثل طلبًا رسميًا لتنفيذ حركة مخزنية.
+
+ولا يمثل بحد ذاته الحركة الفعلية.
+
+بالتالي:
+
+```text
+Voucher
+   ≠
+Completed Stock Movement
+```
+
+الـVoucher يمر خلال Lifecycle مستقل.
+
+---
+
+# 7. VOUCHER LIFECYCLE
+
+## 7.1 Create
+
+```text
+Create
+```
+
+يتم إنشاء مستند الحركة.
+
+في هذه المرحلة:
+
+* يتم تعريف نوع الحركة.
+* يتم تحديد المصدر.
+* يتم تحديد الهدف.
+* يتم تحديد الأصناف والكميات.
+* يتم تحديد الأطراف المرتبطة بالحركة.
+* يتم حفظ المستند.
+
+**لا تعتبر الحركة المخزنية مكتملة بمجرد Create.**
+
+---
+
+# 8. SEND
+
+```text
+Send
+```
+
+يمثل انتقال المستند إلى مرحلة التنفيذ/الإرسال.
+
+الـSend لا يعني تلقائيًا أن الطرف المستقبل استلم البضاعة.
+
+التمييز:
+
+```text
+Send ≠ Receive
+```
+
+والـStock Effect النهائي يجب أن يكون مرتبطًا بالـBusiness Event الذي يثبت انتقال المسؤولية الفعلية، وفق نوع الحركة.
+
+---
+
+# 9. RECEIVE
+
+```text
+Receive
+```
+
+يمثل تسجيل استلام الطرف المستقبل للمستند/البضاعة.
+
+الـReceive ليس مجرد تغيير UI Status.
+
+يجب أن يكون له معنى Business Event واضح ومحدد في Target Design.
+
+---
+
+# 10. COMPLETE
+
+```text
+Complete
+```
+
+يمثل اكتمال العملية التجارية/المخزنية وفق نوع الـVoucher.
+
+عند اكتمال الحركة:
+
+```text
+Business Event
+      ↓
+Central Stock Movement Engine
+      ↓
+Stock Effect
+      ↓
+Inventory Log
+      ↓
+Audit Trail
+```
+
+ولا يجوز أن تنتج نفس الحركة المخزنية من أكثر من مرحلة بدون تعريف صريح لذلك.
+
+---
+
+# 11. CANCEL
+
+```text
+Cancel
+```
+
+يمثل إلغاء المستند.
+
+والقاعدة التصميمية:
+
+> Cancellation لا يعني حذف التاريخ.
+
+إذا كانت الحركة قد **لم تُنفذ مخزنيًا**، فإن إلغاء المستند يلغي العملية دون Stock Movement فعلي.
+
+أما إذا كانت الحركة قد **نفذت بالفعل**، فلا يجوز اعتبار Cancel مجرد حذف أو إعادة كتابة للماضي؛ بل يحتاج الأمر إلى Business Event عكسي محدد.
+
+التفصيل النهائي لهذا السيناريو يحتاج تثبيتًا حسب كل Movement Type.
+
+---
+
+# 12. TRANSFER
+
+Transfer يمثل نقل البضاعة بين مواقع/أطراف مخزنية.
+
+المفهوم:
+
+```text
+Source
+   │
+   │ Transfer
+   ▼
+Destination
+```
+
+وهو ليس Sale.
+
+ولا ينشئ Customer Sale.
+
+والأثر المخزني المستهدف هو انتقال الكمية من مصدر إلى هدف مع بقاء الكمية الكلية للنظام متوازنة.
+
+---
+
+# 13. DIRECT SALE
+
+Direct Sale يمثل **تحميل عهدة بيع ميداني** وليس بيعًا للعميل.
+
+المسار:
+
+```text
+MAIN WAREHOUSE
+      │
+      │ Direct Sale / Direct Issue
+      ▼
+VEHICLE / SALESMAN CUSTODY
+      │
+      │ Field Sales
+      ▼
+CUSTOMER
+```
+
+النقطة الحاكمة:
+
+> **Direct Sale / Direct Issue ≠ Customer Sale**
+
+الحركة الأولى تنقل البضاعة إلى عهدة المندوب.
+
+أما البيع فهو Business Event لاحق يستهلك من مخزون العهدة.
+
+---
+
+# 14. VEHICLE / SALESMAN CUSTODY
+
+السيارة في هذا المسار تمثل عمليًا وعاءً مؤقتًا لمخزون المندوب وفق النموذج التشغيلي الموثق.
+
+المسؤولية التشغيلية عن البضاعة تنتقل إلى المندوب عند استلام العهدة.
+
+المسار:
+
+```text
+Warehouse Responsibility
+        ↓
+Vehicle / Salesman Custody
+        ↓
+Field Sales
+        ↓
+Remaining / Returned Stock
+        ↓
+Warehouse Responsibility
+```
+
+أما التمثيل النهائي لهذه العهدة في الـDatabase، وهل تكون Vehicle Branch أو كيانًا مستقلًا أو غير ذلك، فهو **UNKNOWN في هذا المستوى التصميمي** إلى أن يتم تثبيته من الـSchema وTarget Model.
+
+---
+
+# 15. DIRECT RETURN
+
+Direct Return هو المسار العكسي لعهدة البيع المباشر.
+
+```text
+VEHICLE / SALESMAN CUSTODY
+          │
+          │ Direct Return
+          ▼
+MAIN WAREHOUSE
+```
+
+يمثل إعادة البضاعة المتبقية/المرتجعة من عهدة البيع إلى المخزن.
+
+وهو ليس Sales Return من العميل بالضرورة.
+
+التمييز:
+
+```text
+Direct Return
+    =
+Custody → Warehouse
+
+Sales Return
+    =
+Customer → Sales/Inventory Process
+```
+
+والربط النهائي بين أنواع المرتجعات المختلفة يجب أن يظل محددًا في Business Event Model.
+
+---
+
+# 16. SUPPLIER RETURN
+
+Supplier Return يمثل حركة البضاعة من مخزون المؤسسة إلى المورد.
+
+```text
+WAREHOUSE
+    │
+    │ Supplier Return
+    ▼
+SUPPLIER
+```
+
+وهو ليس Direct Return.
+
+الأطراف والـBusiness Event مختلفان.
+
+---
+
+# 17. STOCK EFFECT RULE
+
+كل Stock Movement يجب أن يكون له أثر محدد وقابل للتتبع.
+
+النموذج العام:
+
+```text
+Business Event
+      ↓
+Movement Validation
+      ↓
+Stock Mutation
+      ↓
+Inventory Log
+      ↓
+Audit
+```
+
+ولا يجوز أن تقوم عدة Edge Functions مستقلة بتطبيق أجزاء مختلفة من نفس Stock Movement بدون Business Event مركزي واضح.
+
+---
+
+# 18. SOURCE OF TRUTH
+
+المبدأ المستهدف:
+
+### Physical Stock
+
+Source of Truth:
+
+```text
+stock_branches.qty
+```
+
+### Allocated Stock
+
+Source of Truth:
+
+```text
+stock_branches.allocated_qty
+```
+
+### Inventory Movement History
+
+Source of Truth:
+
+```text
+inventory_log
+```
+
+مع التمييز بين:
+
+```text
+Current State
+```
+
+و:
+
+```text
+Historical Events
+```
+
+ولا يجوز استخدام Inventory Log كبديل عن Current Stock State.
+
+ولا يجوز إنشاء جدول ثالث يمثل نفس الحقيقة بدون سبب معماري معلن.
+
+---
+
+# 19. ATOMICITY
+
+أي Stock Movement فعلي يجب أن ينفذ كوحدة Atomic واحدة.
+
+المطلوب منطقيًا:
+
+```text
+Validate
+   ↓
+Lock
+   ↓
+Update Stock
+   ↓
+Write Inventory Log
+   ↓
+Audit
+```
+
+إما أن تنجح العملية كاملة، أو لا يتم تطبيق أثرها الجزئي.
+
+---
+
+# 20. RESERVATION SEPARATION
+
+Reservation ليس Stock Movement.
+
+لذلك:
+
+```text
+reserve_stock
+```
+
+هو مفهوم مستقل عن:
+
+```text
+post_stock_movement
+```
+
+والسبب التصميمي:
+
+```text
+Reservation
+    ≠
+Physical Movement
+```
+
+حجز البضاعة لا يعني أنها غادرت موقعها الفعلي.
+
+---
+
+# 21. ACCOUNTING BOUNDARY
+
+Inventory Engine لا يصبح Accounting Engine.
+
+ولكن Business Event المخزني قد ينتج أثرًا محاسبيًا.
+
+المبدأ المستهدف:
+
+```text
+Business Event
+      │
+      ├── Stock Effect
+      │
+      └── Accounting Effect
+```
+
+والأثر المحاسبي يجب أن يكون ناتجًا عن الحدث نفسه وليس نتيجة كتابة محاسبية مكررة من عدة Functions.
+
+المحرك المحاسبي المقترح سابقًا:
+
+```text
+post_journal_entry
+```
+
+لكن تفاصيل الحسابات والقيم المحاسبية لكل Movement Type ليست جزءًا مثبتًا بالكامل في هذه الوثيقة التصميمية، ولذلك تبقى **UNKNOWN** حتى يتم تثبيتها في Accounting Target Design.
+
+---
+
+# 22. APPLICATION BOUNDARY
+
+التطبيقات:
+
+* تعرض الحالة.
+* تجمع Input.
+* تطلب Business Action.
+* تعرض Result.
+
+ولا تملك:
+
+* Stock Truth.
+* Inventory Calculation.
+* مستقلًا عن الـBackend، Business Rules التي تغير المخزون.
+* كتابة مباشرة لحالة المخزون باعتبارها مصدر الحقيقة.
+
+المبدأ:
+
+```text
+Application
+    ↓
+Business Event
+    ↓
+Backend / Business Engine
+    ↓
+Database
+```
+
+وليس:
+
+```text
+Application
+    ↓
+Direct Database Mutation
+```
+
+---
+
+# 23. EDGE FUNCTION BOUNDARY
+
+الـEdge Function تمثل Business Transaction محددة.
+
+لا ينبغي أن تكون:
+
+```text
+One Function
+    =
+Multiple unrelated Business Responsibilities
+```
+
+كما لا ينبغي أن تتكرر نفس Stock Business Logic في عدة Functions.
+
+المطلوب:
+
+```text
+Business Event
+      ↓
+One Responsible Transaction
+      ↓
+Central Stock Engine
+```
+
+---
+
+# 24. AUDITABILITY
+
+كل حركة مخزنية يجب أن تكون قابلة للإجابة عن:
+
+```text
+What?
+Who?
+When?
+From Where?
+To Where?
+Which Item?
+How Much?
+Why?
+Which Business Document?
+Which Business Event?
+```
+
+ويجب أن يكون من الممكن تتبع:
+
+```text
+Voucher
+   ↓
+Business Event
+   ↓
+Stock Movement
+   ↓
+Inventory Log
+   ↓
+Audit Trail
+```
+
+---
+
+# 25. CORE INVENTORY INVARIANTS
+
+يجب الحفاظ على القواعد التالية:
+
+### Invariant 1
+
+لا يوجد Stock Movement بلا Business Event معروف.
+
+### Invariant 2
+
+لا يتم اعتبار Create أو Send أو Receive وحدها بيعًا.
+
+### Invariant 3
+
+Direct Sale لا يساوي Customer Sale.
+
+### Invariant 4
+
+Direct Return لا يساوي Sales Return.
+
+### Invariant 5
+
+Reservation لا يساوي Physical Movement.
+
+### Invariant 6
+
+Current Stock لا يساوي Inventory History.
+
+### Invariant 7
+
+لا توجد عدة Sources of Truth لنفس Current Stock.
+
+### Invariant 8
+
+لا يجوز أن تنتج نفس الحركة المخزنية مرتين بسبب تعدد Functions.
+
+### Invariant 9
+
+كل Stock Mutation يجب أن تكون Atomic.
+
+### Invariant 10
+
+كل حركة يجب أن تكون قابلة للتدقيق والتتبع.
+
+---
+
+# 26. TARGET EVENT MAP
+
+```text
+MANUAL STOCK VOUCHER
+        │
+        ▼
+      CREATE
+        │
+        ▼
+       SEND
+        │
+        ▼
+     RECEIVE
+        │
+        ▼
+     COMPLETE
+        │
+        └──────────────► CANCEL
+```
+
+مع الأحداث المرتبطة:
+
+```text
+Transfer
+   Source → Destination
+
+Direct Sale
+   Warehouse → Vehicle/Driver Custody
+
+Direct Return
+   Vehicle/Driver Custody → Warehouse
+
+Supplier Return
+   Warehouse → Supplier
+```
+
+أما **التوقيت الدقيق للأثر المخزني لكل مرحلة من مراحل Create/Send/Receive/Complete لكل Movement Type** فهو نقطة يجب تثبيتها قبل التنفيذ النهائي لكل Event، ولا يجوز افتراضها من أسماء الحالات وحدها.
+
+---
+
+# 27. TARGET RESPONSIBILITY MAP
+
+| Responsibility          | Target Owner                        |
+| ----------------------- | ----------------------------------- |
+| Display                 | Application                         |
+| User Input              | Application                         |
+| Business Event Request  | Application → Backend               |
+| Voucher Lifecycle       | Voucher Business Logic              |
+| Stock Validation        | Central Stock Engine                |
+| Physical Stock Mutation | Central Stock Engine                |
+| Inventory History       | Central Stock Engine                |
+| Audit                   | Centralized Transaction/Audit Layer |
+| Reservation             | Reservation Engine                  |
+| Accounting              | Accounting Engine                   |
+| Current Stock Truth     | `stock_branches`                    |
+| Inventory History Truth | `inventory_log`                     |
+
+---
+
+# 28. WHAT THIS DESIGN DELIBERATELY DOES NOT DEFINE YET
+
+هذه الوثيقة لا تحسم أي نقطة لم يتم إثباتها أو تصميمها بشكل مستقل، ومنها:
+
+* Schema النهائي للأذونات.
+* أسماء الأعمدة النهائية.
+* Foreign Keys النهائية.
+* RLS Policies.
+* SQL Implementation.
+* PL/pgSQL Implementation.
+* التوقيت النهائي لكل Stock Mutation داخل Lifecycle.
+* Accounting Mapping لكل Movement Type.
+* Vehicle Entity Model النهائي.
+* Custody Entity Model النهائي.
+* كيفية ربط Van Sales Order بالـCustody.
+* Settlement Model النهائي.
+* كيفية معالجة جميع أنواع Returns.
+* كيفية تمثيل Reversal لكل Movement.
+* أسماء Edge Functions النهائية.
+
+كل ما سبق:
+
+**UNKNOWN / TO BE DESIGNED & PROVEN**
+
+ولا يجوز ملء هذه الفراغات أثناء التنفيذ.
+
+---
+
+# 29. IMPLEMENTATION GATE
+
+لا يبدأ تعديل أي Edge Function من المجموعة المستهدفة قبل المرور بالترتيب:
+
+```text
+UNDERSTAND
+     ↓
+PROVE
+     ↓
+DESIGN
+     ↓
+IMPLEMENT
+     ↓
+VALIDATE
+     ↓
+CLOSE
+```
+
+وليس:
+
+```text
+IMPLEMENT
+     ↓
+DISCOVER
+     ↓
+REPAIR
+     ↓
+DISCOVER AGAIN
+```
+
+---
+
+# 30. FINAL DESIGN PRINCIPLE
+
+> **المخزون ليس مجموعة Updates موزعة بين Functions.**
+
+إنه:
+
+```text
+Business Event
+      ↓
+Centralized Stock Movement
+      ↓
+One Physical Stock State
+      ↓
+One Movement History
+      ↓
+One Audit Trail
+```
+
+والقاعدة النهائية:
+
+> **لا نصلح Function قبل أن نعرف أي Business Event تمثله، ومن يملك الحقيقة التي تعدلها، وما هو Target Stock Effect المطلوب منها.**
+
+---
+
+# DESIGN STATUS
+
+**TARGET DESIGN DRAFT — INVENTORY FOUNDATION**
+
+هذه الوثيقة هي المرجع التصميمي الأولي لنطاق Central Inventory & Stock Movement.
+
+ولا تعتبر أي تفاصيل تنفيذية غير مذكورة فيها محسومة.
+
+المرحلة التالية، قبل كتابة أي كود، هي **PROVE**:
+
+```text
+Target Design
+      ↕
+Database Schema
+      ↕
+Current Edge Functions
+      ↕
+Current Applications
+```
+
+ثم يتم تثبيت أي نقطة لازالت UNKNOWN قبل الانتقال إلى IMPLEMENT.
