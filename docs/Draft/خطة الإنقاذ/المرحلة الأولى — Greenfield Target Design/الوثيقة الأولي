@@ -1,0 +1,707 @@
+RAWAEA ERP
+GREENFIELD TARGET DESIGN
+Central Inventory & Stock Movement Engine — V1
+
+حالة الوثيقة: Target Design — قبل Reality Mapping
+النطاق: Inventory + Manual Stock Vouchers + Inventory Adjustments/Counts
+قاعدة حاكمة: لا Original ولا Current ولا Migration تعتبر Target.
+
+1. المبدأ المعماري الأعلى
+
+الروائع لا يجب أن يكون مجموعة تطبيقات كل منها يملك ERP صغيرًا بداخله.
+
+المبدأ:
+
+                    ┌─────────────────────┐
+                    │      MAIN / ERP      │
+                    │  Source of Truth     │
+                    │                     │
+                    │ Company             │
+                    │ Branches            │
+                    │ Warehouses           │
+                    │ Items               │
+                    │ Customers           │
+                    │ Suppliers            │
+                    │ Accounting          │
+                    │ Roles / Policies     │
+                    └──────────┬──────────┘
+                               │
+                               │ authoritative context
+                               ▼
+                    ┌─────────────────────┐
+                    │ CENTRAL INVENTORY    │
+                    │       ENGINE         │
+                    │                     │
+                    │ Validate             │
+                    │ Authorize            │
+                    │ Decide               │
+                    │ Mutate               │
+                    │ Audit                │
+                    └──────────┬──────────┘
+                               │
+          ┌────────────────────┼────────────────────┐
+          ▼                    ▼                    ▼
+   Manual Vouchers       Van Sales           POS / Sales
+   Purchases             Delivery            Returns
+   Loading               Runsheet            Other flows
+
+التطبيقات التشغيلية مصادر أحداث وتنفيذ.
+
+أما الحقيقة المخزنية النهائية فتملكها منظومة Inventory المركزية.
+
+2. ماذا نتعلم من الأنظمة الناضجة؟
+
+نحن لا نحتاج إلى إعادة اختراع المفاهيم الأساسية.
+
+في SAP Business One مثلًا، المخزون يملك مفاهيم منفصلة لـ:
+
+Goods Receipt
+Goods Issue
+Inventory Transfer
+Inventory Counting
+Opening Balances
+Revaluation
+
+كما أن SAP يعامل الحركات المضافة باعتبارها مستندات لا يتم تعديلها لاحقًا ببساطة، بل تُصحح بحركة مقابلة.
+
+والأهم أن SAP يميز بين الحركة المخزنية وبين المستند التشغيلي الذي قد يكون سببًا لها، ويستطيع ربط النقل بين المصدر والوجهة.
+
+Microsoft Dynamics 365 أيضًا يفصل بين أنواع Inventory Journals مثل:
+
+Movement
+Adjustment
+Transfer
+Counting
+
+ويعامل النقل كحركة لها مصدر ووجهة، بينما يمكن لـTransfer Order أن يمثل حالة أكثر تعقيدًا عندما نحتاج إلى In-Transit.
+
+وهذا يقودنا إلى قاعدة مهمة للروائع:
+
+الحركة المخزنية يجب أن تكون كيانًا محكومًا ومقابلًا له أثر مستندي واضح، وليس مجرد UPDATE على stock.
+
+3. ما هو Inventory في RAWAEA؟
+
+المخزون ليس مجرد:
+
+stock_branches.qty
+
+بل حالة اقتصادية/تشغيلية يمكن التعبير عنها:
+
+Physical Quantity
+       -
+Allocated Quantity
+       =
+Available Quantity
+
+أي:
+
+Physical Stock
+
+ما هو موجود فعليًا تحت سيطرة الموقع المخزني.
+
+Allocated Stock
+
+ما تم حجزه لمسار تشغيلي أو التزام لم يكتمل بعد.
+
+Available Stock
+
+ما يمكن استخدامه الآن وفق قواعد النظام.
+
+وهذا الفصل يجب أن يصبح مفهومًا مركزيًا وليس منطقًا تعيد كل Function حسابه بطريقتها.
+
+4. القلب المركزي
+
+القلب ليس Function واحدة بالضرورة.
+
+هو Domain Capability:
+
+Inventory Engine
+
+ويمكن تنفيذه داخليًا عبر عدة primitives/services، لكن يجب أن يكون له مالك منطقي واحد.
+
+وظائفه:
+
+Resolve Context
+      ↓
+Authorize
+      ↓
+Validate
+      ↓
+Determine Movement
+      ↓
+Lock State
+      ↓
+Validate Availability
+      ↓
+Apply Mutation
+      ↓
+Write Inventory Log
+      ↓
+Emit/Apply Accounting Effect
+      ↓
+Audit
+      ↓
+Commit
+
+لا يجوز لمسار تشغيلي أن يكرر هذه السلسلة بطريقته.
+
+5. مصادر الحركة المخزنية
+
+نميز بين:
+
+A. Direct Inventory Events
+
+حركات تنشأ أساسًا من قرار مخزني مباشر:
+
+صرف مباشر
+مرتجع مباشر
+تحويل مخزني
+تسوية مخزنية
+جرد
+B. Operationally-Originated Inventory Events
+
+الحركة المخزنية ناتجة عن عملية تشغيلية:
+
+Purchase Receipt
+POS Sale
+Van Sale
+Loading
+Unloading
+Customer Return
+Supplier Return
+Delivery
+
+لكن كون الحدث بدأ من تطبيق آخر لا يعني أن التطبيق يملك المخزون.
+
+هو فقط يطلب:
+
+Inventory Engine:
+"نفّذ هذه الحركة وفق السياق والقواعد."
+6. الأذونات المخزنية اليدوية الستة
+
+الـManual Stock Vouchers ليست مجرد CRUD.
+
+هي مستندات تحكم في حركة مخزنية.
+
+يجب أن يكون لكل نوع:
+
+Purpose
+Source
+Destination
+Business Event
+Allowed Movement
+Stock Effect
+Audit Meaning
+Accounting Meaning
+
+والأهم:
+
+صرف مباشر
+
+ليس المقصود "صرف مجهول".
+
+في سياق RAWAEA الذي ثبتناه، هناك مسار بيع مباشر خارج Runsheet، حيث يكون الطرف المقابل مندوب البيع المباشر.
+
+إذن:
+
+Warehouse
+    ↓
+Direct Sales Representative
+
+وهذه حركة مختلفة مفاهيميًا عن Van Sales المرتبط برحلة/Runsheet.
+
+مرتجع مباشر
+
+العكس المنطقي لذلك المسار:
+
+Direct Sales Representative
+    ↓
+Warehouse
+
+أما التحويل:
+
+Warehouse A
+    ↓
+Warehouse B
+
+والبقية يجب أن تُعرّف كحركات مستقلة وفق الـBusiness Model، لا حسب أسماء Functions الحالية.
+
+7. دورة الإذن المخزني
+
+نموذجنا المستهدف:
+
+CREATE
+  ↓
+DRAFT
+  ↓
+VALIDATE
+  ↓
+SEND
+  ↓
+[Movement depending on voucher semantics]
+  ↓
+RECEIVE
+  ↓
+COMPLETE
+
+مع:
+
+DRAFT
+  ↓
+CANCEL
+
+لكن نقطة مهمة:
+
+Send / Receive / Complete ليست أسماء تقنية فقط.
+
+يجب أن نحدد لكل نوع Voucher:
+
+هل Send يخصم؟
+هل Receive يضيف؟
+هل Complete مجرد إغلاق؟
+هل توجد حالة In Transit؟
+هل يوجد أثر مؤقت؟
+هل الحركة تحدث مرة واحدة فقط؟
+ما الذي يحدث عند Cancel قبل الحركة؟
+هل Cancel بعد الحركة مسموح؟ وإذا نعم، فهو حركة عكسية وليس DELETE.
+8. أهم قرار: المستند ≠ الحركة
+
+يجب ألا نخلط:
+
+Voucher
+
+مع:
+
+Inventory Movement
+
+الـVoucher هو وثيقة/نية/تفويض/سجل تشغيلي.
+
+أما Inventory Movement فهو الحقيقة التي غيرت حالة المخزون.
+
+والربط:
+
+Voucher
+   │
+   ├── Voucher Lines
+   │
+   └── Inventory Movement(s)
+              │
+              ├── Stock mutation
+              └── Inventory Log
+
+هذا الفصل مهم جدًا للرقابة والتدقيق والتقارير.
+
+9. Inventory Log
+
+الـInventory Log ليس مجرد جدول Debug.
+
+هو سجل تاريخي للحقيقة المخزنية.
+
+كل حركة يجب أن تستطيع الإجابة عن:
+
+ماذا تحرك؟
+من أين؟
+إلى أين؟
+كم؟
+متى؟
+لماذا؟
+بواسطة من؟
+بأي مستند؟
+ولأي شركة؟
+
+لذلك يجب أن يكون:
+
+Inventory Movement
+        ↓
+Inventory Log
+
+وليس:
+
+Function
+   ↓
+INSERT inventory_log
+
+كل Function لا ينبغي أن تخترع شكل الـLog بنفسها.
+
+10. Atomicity
+
+الحركة المخزنية يجب أن تكون وحدة واحدة.
+
+مثال:
+
+Voucher يحتوي 5 أصناف:
+
+Item A ✓
+Item B ✓
+Item C ✗ insufficient stock
+
+النتيجة الصحيحة:
+
+A → no deduction
+B → no deduction
+C → failure
+D → no deduction
+E → no deduction
+Log → no final movement
+Voucher → no Sent
+
+أي:
+
+BEGIN
+  validate ALL
+  lock ALL required state
+  mutate ALL
+  log ALL
+  transition document
+COMMIT
+
+أو:
+
+ROLLBACK
+11. Concurrency
+
+لا يكفي أن نقول:
+
+استخدمنا FOR UPDATE.
+
+Target الصحيح:
+
+إذا طلبان في نفس الوقت كمية أكبر من المتاح:
+
+Available = 10
+
+Request A = 7
+Request B = 7
+
+لا يجوز:
+
+A succeeds
+B succeeds
+
+والنتيجة:
+
+-4
+
+بل يجب أن تنجح واحدة وفق ترتيب المعاملة، والثانية ترى الحالة الجديدة وترفض أو تتعامل وفق Business Rule.
+
+إذن:
+
+Concurrency safety جزء من Target وليس تحسينًا لاحقًا.
+
+12. Idempotency
+
+نفس الحدث لا يجب أن يخصم مرتين.
+
+مثال:
+
+Voucher #123
+Draft
+
+أول Send:
+
+Stock deducted
+Voucher → Sent
+
+إعادة نفس الطلب:
+
+NO SECOND DEDUCTION
+
+وهذا يجب أن يكون مضمونًا على مستوى القلب، وليس فقط على مستوى واجهة المستخدم.
+
+13. Company Isolation
+
+كل حركة يجب أن تعيش داخل:
+
+Company Context
+
+والسلسلة المستهدفة:
+
+Company
+   ↓
+Branch
+   ↓
+Warehouse / Stock Branch
+   ↓
+Item
+   ↓
+Stock
+
+لا نعتبر FK منفردًا كافيًا.
+
+المطلوب هو إثبات السلسلة المنطقية الكاملة.
+
+14. التطبيقات التشغيلية
+
+التطبيقات ليست مالكة للمخزون.
+
+مثلاً:
+
+Van Sales
+Van Sales App
+    ↓
+Loading Event
+    ↓
+Inventory Engine
+POS
+POS
+ ↓
+Sale Event
+ ↓
+Inventory Engine
+Manual Voucher
+Voucher App
+ ↓
+Voucher Event
+ ↓
+Inventory Engine
+Purchase
+Purchasing
+ ↓
+Receipt Event
+ ↓
+Inventory Engine
+
+وهكذا.
+
+هذا هو القلب الواحد.
+
+15. أين تكون Business Rules؟
+
+ليست كل Business Rules يجب أن تكون في PostgreSQL.
+
+القاعدة الأفضل:
+
+Edge / Domain Service
+
+يمتلك:
+
+API boundary
+authentication
+request validation
+orchestration
+external response
+authorization boundary
+Inventory Engine
+
+يمتلك:
+
+inventory-specific business rules
+movement semantics
+stock integrity
+atomic mutation
+inventory log
+idempotency
+concurrency
+Database
+
+يمتلك:
+
+state
+constraints
+indexes
+FK
+transaction primitives
+integrity guarantees
+locks
+
+وبالتالي لا نريد:
+
+Database = ERP
+
+ولا:
+
+Every Edge Function = ERP
+
+بل:
+
+Applications
+     ↓
+Domain Services
+     ↓
+Central Inventory Engine
+     ↓
+Database
+16. Accounting
+
+المخزون ليس منفصلًا عن الحقيقة الاقتصادية.
+
+في الأنظمة الناضجة، الحركات المخزنية يمكن أن يكون لها أثر مالي؛ SAP Business One مثلًا يوضح أن Goods Receipt وGoods Issue يمكن أن يولدا Journal Entries في perpetual inventory.
+
+Dynamics أيضًا يوضح أن بعض inventory transactions تؤدي إلى physical and financial updates، مع فصل خاص في بعض transfer-order scenarios.
+
+لذلك Target RAWAEA يجب أن يقرر صراحة لكل Movement:
+
+Physical only?
+Physical + Accounting?
+Physical + Ledger?
+Physical + Audit?
+
+ولا نترك ذلك لكل Function.
+
+17. الجرد والتسويات
+
+يجب فصل:
+
+Inventory Count
+
+عن:
+
+Inventory Adjustment
+
+الجرد:
+
+What physically exists?
+
+التسوية:
+
+What adjustment is authorized after comparing reality with system state?
+
+وهذا يتفق مع نماذج ERP الناضجة التي تفصل counting عن adjustment/movement. SAP وDynamics كلاهما يقدمان مفاهيم مستقلة للجرد والتسويات والحركات.
+
+Target:
+
+Count
+ ↓
+Variance
+ ↓
+Approval / Policy
+ ↓
+Adjustment Movement
+ ↓
+Inventory Log
+
+وليس:
+
+User edits qty
+18. ما الذي سنبدعه في RAWAEA؟
+
+هنا لا ننسخ SAP أو Odoo.
+
+نحتفظ بخصوصية الروائع، وأهمها:
+
+1. ستة أنواع الأذونات اليدوية
+
+بصياغة تناسب دورة العمل الفعلية للمنشأة.
+
+2. Direct Sales خارج Runsheet
+
+وهذه نقطة مهمة جدًا.
+
+الـDirect Sales Representative ليس Van Sales، وليس Runsheet.
+
+لكن كلاهما يجب أن يغذي القلب المركزي.
+
+3. العلاقة بين:
+Warehouse
+↔ Direct Sales Representative
+
+كجزء من نموذج التشغيل.
+
+4. التكامل مع:
+Van Sales
+Runsheet
+Loading
+Unloading
+Returns
+POS
+Purchasing
+
+دون أن تتحول هذه التطبيقات إلى مالكي مخزون مستقلين.
+
+5. نموذج الـ6 كميات
+
+إذا كان هذا النموذج جزءًا من تصميم RAWAEA المعتمد، فهو ابتكار يجب أن يدخل في قلب Inventory Engine وليس داخل تطبيق بعينه.
+
+19. Target Function Model
+
+بدل أن نصلح:
+
+create-stock-voucher
+send-stock-voucher
+receive-stock-voucher
+complete-stock-voucher
+cancel-stock-voucher
+
+كل واحدة بمعزل، نريد:
+
+Manual Voucher Domain
+        ↓
+Voucher Lifecycle
+        ↓
+Central Inventory Engine
+
+والدوال الخمس تصبح Adapters / Commands:
+
+create
+   ↓
+create voucher
+
+send
+   ↓
+request inventory movement
+
+receive
+   ↓
+request receipt movement
+
+complete
+   ↓
+close lifecycle
+
+cancel
+   ↓
+cancel / reverse according to state
+
+ولا يجوز أن تحتوي كل واحدة على نسخة خاصة من Inventory Rules.
+
+20. Target النهائي
+
+الصورة التي أريد تثبيتها قبل Reality Mapping:
+
+                    RAWAEA ERP
+                         │
+                  SYSTEM OF RECORD
+                         │
+          ┌──────────────┴──────────────┐
+          │                             │
+   Master / Governance            Operational Apps
+          │                             │
+          │                    ┌────────┼────────┐
+          │                    │        │        │
+       Company                POS    VanSales  Vouchers
+       Branch                 Runsheet Loading  Returns
+       Warehouse              Sales   Delivery Purchasing
+       Item
+       Customer
+       Supplier
+          │                    │        │        │
+          └────────────────────┴────────┴────────┘
+                               │
+                               ▼
+                    CENTRAL INVENTORY ENGINE
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+           Stock          Inventory Log      Audit
+              │                │
+              └───────────────┬┘
+                              ▼
+                         Accounting
+القاعدة الذهبية
+
+التطبيقات كثيرة.
+الأحداث كثيرة.
+المستندات كثيرة.
+لكن الحقيقة المخزنية واحدة.
+
+وهذا هو الـTarget الذي سنقيس عليه كل ما هو موجود لاحقًا.
+
+المرحلة التالية
+
+بعد تثبيت هذه الوثيقة، لا نلمس send-stock-voucher.
+
+ننتقل إلى بناء Inventory Movement Catalog كامل:
+
+جدول رسمي لكل حركة مخزنية في RAWAEA: المصدر، النوع، الطرف المقابل، المصدر/الوجهة، أثر qty، أثر allocated_qty، المستند، الـInventory Log، الـAccounting، والـLifecycle.
+
+وهذه ستكون القطعة التي تربط الـManual Vouchers بالقلب المركزي وبقية التطبيقات التشغيلية، وتمنعنا من العودة إلى دوامة إصلاح Function ثم اكتشاف أن تعريف الحركة نفسه كان خاطئًا.
