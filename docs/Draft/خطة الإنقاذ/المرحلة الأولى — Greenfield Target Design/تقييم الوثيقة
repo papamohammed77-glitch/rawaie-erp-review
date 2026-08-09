@@ -1,0 +1,660 @@
+تقييم المساعدين للوثيقة المجمعة المقدمة من وائل
+أولا رد همام
+نعم. راجعت المادة المتاحة للوثيقة وربطتها بالـTarget Inventory Design الذي سبق تثبيته. تقييمي المبدئي: الوثيقة قوية جدًا كأساس للمرحلة الأولى، لكنها ليست بعدُ وثيقة Target نهائية مغلقة.
+
+التقييم
+
+1. الاتجاه المعماري صحيح جدًا — PASS
+
+الوثيقة تنطلق من الفكرة الصحيحة: لا نصلح الدوال الخمس كجزر منفصلة، بل نثبت أولًا نموذج الأذونات ودورة الحركة ثم نعيد إسقاط Original وCurrent عليه. هذا متسق مع التسلسل المثبت:
+
+Architecture → Target Inventory Model → Manual Stock Voucher Architecture → Central Inventory Engine → Function Repair.
+
+2. فصل المسارات ممتاز — PASS
+
+تمييزها بين:
+
+Manual Stock Voucher Cycle
+Adjustment / Count
+Purchase Receiving
+Van Sales
+
+مهم جدًا، ويمنع الخطأ السابق في تصنيف كل دوال Inventory كأذونات يدوية.
+
+3. فهم DirectSale / DirectReturn صحيح — PASS
+
+الـTarget المثبت يعرّف DirectSale كـ تحميل عهدة للسيارة/المندوب وليس بيع العميل، ثم VanSale يستهلك من عهدة السيارة، وDirectReturn يعيد العهدة للمخزن.
+
+وهذه نقطة جوهرية في تصميم الروائع وليست مجرد تسمية مستند.
+
+4. القلب المركزي واضح — PASS
+
+الوثيقة لا تجعل التطبيقات التشغيلية مصدرًا مستقلًا لحقيقة المخزون؛ بل تجعل هناك Business Core مركزيًا مسؤولًا عن التحقق، الحركة الفيزيائية، وتسجيل الحركة، بينما التطبيقات تعبّر عن الـBusiness Intent.
+
+وهذا متوافق تمامًا مع فلسفة النظام: التطبيقات تنفذ، والقلب المركزي يحكم ويحافظ على الحقيقة.
+
+5. Lifecycle جيد — PASS مبدئي
+
+Create → Send → Receive → Complete → Cancel مثبت كدورة مستندية، مع قاعدة مهمة جدًا: تغيير الحالة لا يجوز أن يولد حركة مخزون ثانية.
+
+6. هناك نقطة يجب ألا نعتبرها مغلقة بعد — IMPORTANT
+
+الوثيقة الحالية ممتازة في المبادئ، لكنها تحتاج قبل اعتمادها كـTarget نهائي إلى حسم بعض الـEvent Contracts التفصيلية، خصوصًا:
+
+الحركة الدقيقة لكل نوع Voucher.
+متى يكون الأثر TransferOut/TransferIn ومتى Loading/Unloading.
+العلاقة الدقيقة بين المستند، الطرف المصدر، الطرف المستلم، والعهدة.
+قواعد كل مرحلة من مراحل lifecycle.
+ماذا يحدث عند الإلغاء بعد حدوث حركة فعلية.
+
+والـTarget Inventory نفسه يقول صراحة إن الاختيار بين Loading/Unloading وTransferOut/TransferIn يجب تثبيته من خلال Domain Event Contract قبل التنفيذ.
+
+الحكم
+
+الوثيقة تصلح كأساس ممتاز للمرحلة الأولى Greenfield Target Design، لكنها لا ينبغي أن تُعامل بعد كـImplementation Specification.
+
+وأرى أن الاتجاه الصحيح الآن هو:
+
+Greenfield Target Design العام
+↓
+Manual Stock Voucher Target Model
+↓
+تعريف كل Voucher Type كـBusiness Event
+↓
+تحديد Source / Destination / Custody / Accountability
+↓
+تحديد Inventory Movement الناتج
+↓
+تحديد أثر Inventory Log
+↓
+ثم فقط نعود إلى Original وCurrent ونقيمهما.
+
+وهذا هو الطريق الذي يمنعنا تحديدًا من الوقوع مرة أخرى في خطأ إصلاح send-stock-voucher قبل أن نعرف بالضبط ماذا يعني كل نوع من أنواع الأذونات في نموذج الروائع الصحيح.
+
+تقييمي: 8.5/10 كـGreenfield Baseline — وليس بعد 10/10 كـTarget Implementation Contract.
+
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+ثانيا رد المساعد حسين
+
+نعم. راجعت الوثيقة الموجودة فعليًا في GitHub على main، والملف هو:
+
+docs/Draft/خطة الإنقاذ/المرحلة الأولى — Greenfield Target Design/مقترح وثيقة مجمعة
+
+والوثيقة تعرف نفسها صراحةً بأنها Target Design Baseline — قبل Reality Mapping والتنفيذ، ونطاقها Inventory + Central Stock Movement + Manual Stock Vouchers + Direct Custody + Adjustments/Counts.
+
+لكن هناك نقطة مهمة: أداة GitHub أعادت المحتوى في استجابة ضخمة وتم اقتطاعها عند حد العرض؛ لذلك لا أستطيع أن أقول لك بصدق إنني راجعت كل حرف حتى آخر سطر من النسخة الموجودة دون أن يكون الجزء الأخير ظاهرًا لي. لذلك سأقيّم ما تمكنت من إثباته، ولن أملأ الجزء غير المقروء بالتخمين.
+
+التقييم الأولي — Greenfield Target Design
+الحكم المختصر
+
+الاتجاه المعماري للوثيقة قوي جدًا، ومناسب كمرحلة Greenfield، لكنني لا أعتبرها بعدُ Design Baseline جاهزًا للتنفيذ.
+
+السبب ليس وجود خطأ معين أثبته الآن، وإنما لأن الوثيقة ما زالت تحتوي على عدد من العناصر التي تصف المبادئ والاتجاه أكثر مما تثبت النموذج التشغيلي النهائي لكل Business Event.
+
+وهذا فرق مهم جدًا.
+
+ما أراه صحيحًا وقويًا في الوثيقة
+1. بدأت من Target وليس من الكود
+
+هذه أقوى نقطة.
+
+الوثيقة تضع صراحة:
+
+TARGET
+ ↓
+ORIGINAL
+ ↓
+CURRENT
+ ↓
+EVIDENCE
+ ↓
+GAP
+ ↓
+IMPLEMENTATION
+
+بدل دورة الإصلاح القديمة.
+
+هذا هو المنهج الصحيح لمشروع Greenfield.
+
+2. فصلت Document / Movement / Stock State
+
+هذه نقطة أساسية جدًا:
+
+Voucher ≠ Movement
+Movement ≠ Stock State
+Stock Balance ≠ Movement History
+
+ثم:
+
+Business Event
+ ↓
+Document
+ ↓
+Movement
+ ↓
+Stock State
+ +
+Inventory Log
+
+هذا الفصل مهم جدًا لأنه يمنع تحويل تغيّر حالة المستند إلى حركة مخزنية ثانية.
+
+أعتبر هذه من أهم ركائز الوثيقة.
+
+3. فصلت Physical / Allocated / Available
+
+الوثيقة تثبت:
+
+Physical = stock_branches.qty
+
+Allocated = stock_branches.allocated_qty
+
+Available = Physical - Allocated
+
+وتعامل available كقيمة مشتقة وليست Source of Truth مستقلًا.
+
+وهذا متسق جدًا مع ما ثبتناه سابقًا.
+
+4. وضعت Central Inventory Core
+
+الفكرة:
+
+Central Inventory Engine
+ ├─ Resolve Context
+ ├─ Authorization
+ ├─ Validate
+ ├─ Determine Movement
+ ├─ Lock
+ ├─ Availability
+ ├─ Mutation
+ ├─ Inventory Log
+ ├─ Audit
+ └─ Commit
+
+قوية جدًا من ناحية توزيع المسؤوليات.
+
+والأفضل أن الوثيقة لا تربط التصميم نهائيًا باسم Function معين؛ فهي تقول إن post_stock_movement اسم مقترح قابل للتثبيت النهائي أثناء Evidence/Implementation.
+
+وهذا تصرف صحيح؛ لأن Target Capability أهم من اسم الـRPC.
+
+5. فصلت Inventory Owner عن Event Source
+
+الوثيقة تقول:
+
+Event Source ≠ Inventory Owner
+
+وهذه قاعدة مهمة جدًا.
+
+فـVan Sales أو POS أو Purchasing يمكن أن يكون مصدر الحدث، لكن لا ينبغي أن يعني ذلك أن التطبيق نفسه أصبح مالكًا لمنطق Mutation الخاص بالمخزون.
+
+وهذا بالضبط الاتجاه الذي نحتاجه.
+
+لكن أين أرى أن الوثيقة تحتاج نضجًا قبل اعتمادها؟
+1. أكبر نقطة: Lifecycle لم يُثبت بما يكفي
+
+لدينا:
+
+Create
+Send
+Receive
+Complete
+Cancel
+
+لكن المعنى الدقيق لكل مرحلة بالنسبة لكل Movement Type يجب أن يكون مصفوفة إلزامية، وليس مجرد وصف عام.
+
+مثلًا:
+
+Movement	Create	Send	Receive	Complete	Stock Effect
+Transfer	?	?	?	?	?
+DirectSale	?	?	?	?	?
+DirectReturn	?	?	?	?	?
+SupplierReturn	?	?	?	?	?
+
+إذا لم نثبت هذه المصفوفة، فسنعود لنفس المشكلة القديمة:
+
+Function → نكتشف معنى الحالة → نكتشف Stock Effect → نرجع للتصميم.
+
+إذن هذه بالنسبة لي أهم فجوة تصميمية قبل التنفيذ.
+
+2. DirectSale يحتاج فصلًا صريحًا إلى حدثين
+
+الوثيقة تسمي DirectSale كنوع حركة/مسار، لكن الرؤية التي ثبتناها لاحقًا تقول بوضوح:
+
+Warehouse
+   ↓
+Direct Issue / Custody Load
+   ↓
+Vehicle Custody
+   ↓
+Van Sale
+   ↓
+Customer
+
+أي:
+
+تحميل العهدة ≠ البيع.
+
+لذلك Target Design يجب أن يحدد صراحةً:
+
+Custody Acquisition Event
+        ≠
+Customer Sale Event
+
+وإلا فهناك خطر أن يعيد التنفيذ دمج الاثنين تحت اسم DirectSale.
+
+3. DirectReturn يحتاج نفس الصرامة
+
+يجب أن نميز:
+
+Direct Return
+Vehicle Custody → Warehouse
+
+عن:
+
+Customer Sales Return
+Customer → Sales/Inventory
+
+الوثيقة الحالية تشير إلى ذلك، لكنني أريد أن يصبح هذا Invariant رسميًا في Target Model، وليس مجرد شرح نصي.
+
+4. Transfer يحتاج تعريفًا زمنيًا للحركة
+
+نحتاج أن نحسم:
+
+هل Transfer هو:
+
+TransferOut
+ثم
+TransferIn
+
+أم:
+
+Transfer Transaction
+   → atomic two-sided movement
+
+أم أن:
+
+Send
+
+ينتج Out،
+
+و:
+
+Receive
+
+ينتج In؟
+
+هذه ليست تفصيلة برمجية.
+
+هذه Business Semantics.
+
+ويجب حسمها في Greenfield قبل الكود.
+
+5. inventory_log يحتاج تعريفًا أدق
+
+الوثيقة تحدده كـMovement History، وهذا صحيح كاتجاه.
+
+لكن Target Design يحتاج تحديدًا أقوى:
+
+ما هو الحدث الذي يستحق Log واحدًا؟
+
+وهل Transfer ينتج:
+
+Log واحد؟
+Logين؟
+Transaction واحدة تحتوي طرفين؟
+Event واحد + movement lines؟
+
+هذه النقطة لا ينبغي أن نتركها للمبرمج أثناء التنفيذ.
+
+6. Authorization ما زال عامًا
+
+في جدول المسؤوليات نجد:
+
+Authorization → Domain/Application Boundary حسب القرار المعتمد
+
+هذه صياغة صحيحة كمساحة تصميم، لكنها تعني أن القرار لم يُحسم بعد.
+
+وبما أن لدينا وثيقة الأذونات المخزنية اليدوية، يجب لاحقًا تحديد:
+
+Who may Create?
+Who may Send?
+Who may Receive?
+Who may Complete?
+Who may Cancel?
+Who may Override?
+
+مع الفصل بين:
+
+Authentication / Authorization / Business Validation.
+
+7. نقطة أعتبرها ممتازة جدًا
+
+الوثيقة لا تقع في خطأ:
+
+"كل شيء يجب أن يكون PostgreSQL."
+
+بل تقول:
+
+Application
+ ↓
+Domain Service
+ ↓
+Central Inventory Business Core
+ ↓
+Database Atomic Primitive
+
+وتؤكد أن PostgreSQL ليست الـERP، وفي الوقت نفسه Edge Functions ليست ERP مستقلة.
+
+هذا تصميم أكثر نضجًا من مجرد نقل كل شيء إلى RPC.
+
+8. أرى أن الوثيقة تحتاج فصلًا بين ثلاثة مستويات
+
+حاليًا توجد في بعض المواضع عبارات من مستويات مختلفة داخل نفس الوثيقة:
+
+Policy
+
+ما يجب أن يحدث.
+
+Domain Semantics
+
+ما معنى الحدث.
+
+Implementation
+
+كيف سينفذ.
+
+مثال:
+
+post_stock_movement
+
+هو Implementation Primitive.
+
+أما:
+
+Transfer
+
+فهو Business Event / Movement Type.
+
+وأما:
+
+stock_branches.qty
+
+فهو Storage Representation لـCurrent State.
+
+يجب الحفاظ على الفصل بينهم في النسخة النهائية.
+
+التقييم العام
+
+بناءً على الجزء الذي استطعت قراءته والتحقق منه:
+
+المحور	تقييمي
+Greenfield Mindset	Excellent
+Target قبل Code	Excellent
+Document/Movement/State separation	Excellent
+Source of Truth	Strong
+Central Inventory Core	Strong
+Separation of Applications/Core	Strong
+Physical/Allocated/Available	Strong
+Movement Semantics	Needs completion
+Lifecycle Semantics	Needs completion
+Authorization Model	Needs completion
+Event → Stock Effect Matrix	Needs completion
+Ready for Implementation	NO — not yet
+حكمي كـ CTO:
+
+الوثيقة تصلح كأساس ممتاز للمرحلة الأولى، لكنها ليست بعدُ "Implementation Contract".
+
+وأنا لا أنصح بالانتقال منها مباشرة إلى إصلاح الكود.
+
+الخطوة الصحيحة التالية ليست Coding.
+
+بل إكمال Target Design Closure بحيث لا يبقى أي سؤال من النوع:
+
+"ماذا يحدث للمخزون عند Receive؟"
+
+أو:
+
+"هل DirectSale تحميل عهدة أم Sale؟"
+
+أو:
+
+"متى يحدث TransferOut؟"
+
+أو:
+
+"هل Transfer ينتج Log واحدًا أم طرفين؟"
+
+ثم بعدها فقط:
+
+TARGET DESIGN
+      ↓
+DESIGN CLOSED
+      ↓
+REALITY MAPPING
+      ↓
+GAP MATRIX
+      ↓
+IMPLEMENT
+SELF AUDIT
+
+هل فتحت الملف من المستودع؟ نعم، من main.
+
+هل تحققت من هوية الملف؟ نعم؛ الـSHA الظاهر هو b3bc314c8cd52c3d8ac9ed5158ea02f57515865a.
+
+هل قرأت الملف كاملًا حتى آخر سطر؟ لا أستطيع إثبات ذلك لأن GitHub connector اقتطع المحتوى عند حد الاستجابة. لذلك لن أدعي قراءة الجزء غير الظاهر.
+
+هل التقييم مبني على ما قرأته فقط؟ نعم.
+
+هل ملأت الجزء غير المقروء بالتخمين؟ لا.
+
+هل يوجد احتمال أن يحتوي الجزء الأخير على قرارات تغير هذا الحكم؟ نعم، UNKNOWN.
+
+نسبة الثقة في التقييم الحالي: 92% للجزء المقروء، وليس 100% للوثيقة الكاملة.
+
+التقييم النهائي:
+Strong Greenfield Foundation — NOT YET CLOSED FOR IMPLEMENTATION.
+
+-----------------------------------------------------------------------------------------------------------------
+
+ثالثا - رد المساعد مراد
+نعم. راجعت مقترح وثيقة مجمعة من main، وقرأت محتواها كاملًا حتى النهاية.
+
+التقييم الأولي — المرحلة الأولى: Greenfield Target Design
+
+تقييمي العام: الوثيقة قوية جدًا كأساس للمرحلة الأولى، واتجاهها صحيح بوضوح.
+
+وأهم نقطة فيها أنها لا تقع في الخطأ الذي كنا نريد التخلص منه: إصلاح الكود قبل تثبيت النموذج.
+
+ما أعتبره مثبتًا وقويًا في الوثيقة
+
+الفصل الصريح بين Target وOriginal وCurrent
+
+التسلسل:
+TARGET → ORIGINAL → CURRENT → EVIDENCE → GAP → IMPLEMENTATION
+
+هو بالضبط الحاجز المطلوب لمنع العودة إلى دورة الإصلاح العشوائية.
+
+One Central Inventory Business Core
+
+الوثيقة لا تقول ببساطة "استخدم Function واحدة"، بل تميز بشكل صحيح بين:
+
+Domain Capability
+primitives داخلية
+Application
+Database Atomic Primitive
+
+وهذا أكثر نضجًا من اختزال المعمارية كلها في post_stock_movement.
+
+الفصل بين Document / Movement / Stock State
+
+هذه من أهم نقاط الوثيقة:
+
+Voucher ≠ Movement ≠ Stock State
+
+وبالتالي تغيير حالة المستند لا يعني تلقائيًا حركة مخزنية جديدة.
+
+تثبيت Source of Truth
+
+الوثيقة تثبت:
+
+stock_branches.qty → Physical Stock
+stock_branches.allocated_qty → Reserved Stock
+Available → Derived
+inventory_log → Movement History
+stock_vouchers → Voucher Header
+stock_voucher_details → Voucher Details
+
+وهذا يعطي أساسًا واضحًا جدًا لمرحلة Reality Mapping.
+
+DirectSale تم تعريفه بالشكل الصحيح
+
+الوثيقة تحسم:
+
+DirectSale ≠ Customer Sale
+
+بل:
+
+Warehouse → Vehicle/Representative Custody → Field Sales
+
+ثم:
+
+VanSale = Sell From Custody
+
+وهذه نقطة محورية جدًا بالنسبة للنطاق الذي نعمل عليه.
+
+DirectReturn منفصل عن SalesReturn
+
+تم تثبيت:
+
+DirectReturn = Custody → Warehouse
+
+بينما:
+
+SalesReturn = Customer → Sales/Inventory Process
+
+وهذا فصل مهم جدًا.
+
+Adjustment لم يُجبر داخل دورة الـVoucher
+
+الوثيقة تميّز Adjustment عن Transfer، وتترك bulk-stock-adjustment وsave-inventory-count كمسار منطقي مستقل مع إمكانية استخدام نفس الـCore لاحقًا.
+
+Atomicity / Concurrency / Idempotency
+
+هذه إضافة ممتازة؛ لأن Target Design لا يكتفي بوصف "ماذا يحدث"، بل يحدد خصائص يجب إثباتها:
+
+Atomicity
+Concurrency
+Idempotency
+Isolation
+
+والأهم أنها تنص صراحة على أن Concurrency يجب إثباتها باختبار حقيقي وليس بالاستنتاج من الكود.
+
+Application Boundaries واضحة
+
+التطبيقات:
+
+Event Sources / Execution Clients
+
+وليست Inventory Owners.
+
+وبالتالي Warehouse / Van Sales / POS / Purchasing / Returns لا يجوز أن تصبح Engines مستقلة للمخزون.
+
+Implementation Gate ممتاز
+
+قبل تعديل Function يجب تحديد:
+
+Event → Source of Truth → Movement Type → Transaction Boundary → Inputs → Outputs → Side Effects → Authorization → Context → Idempotency → Concurrency
+
+ثم:
+
+Target → Evidence → Schema → Function Mapping → Implementation → Test → Validation → Close.
+
+لكن هناك نقطة مهمة جدًا
+
+أنا لا أعتبر الوثيقة جاهزة بعد كـ"Final Target Contract" للتنفيذ.
+
+وليس هذا عيبًا فيها؛ بالعكس، هي نفسها تعترف بذلك في القسم 40.
+
+الوثيقة تحدد صراحةً أن هناك نقاطًا ما زالت:
+
+PROVE REQUIRED / UNKNOWN
+
+وأهمها:
+
+الشكل النهائي لتمثيل Vehicle / Representative Custody في الـSchema.
+الـmapping النهائي بين:
+Loading / Unloading
+و
+TransferOut / TransferIn
+لكل Workflow.
+تفاصيل Authorization.
+السلوك الدقيق لـCancel بعد Posting.
+Accounting Mapping.
+أي Company/Branch relationship غير مثبتة بالـSchema.
+
+وهذا صحيح منهجيًا؛ لا ينبغي تحويل هذه النقاط إلى قرارات Target نهائية بمجرد أننا نحتاجها في التنفيذ.
+
+نقطة أريد تثبيتها
+
+الوثيقة الحالية أفضل من وثيقة TARGET — RAWAEA CENTRAL INVENTORY & STOCK MOVEMENT DESIGN التي أنشأناها قبلها من ناحية الشمول.
+
+لأن هذه الوثيقة الجديدة لا تكتفي بمحرك المخزون، وإنما تربطه داخل:
+
+RAWAEA MASTER SYSTEM → Inventory Domain → Document Layer + Movement Layer → Applications
+
+وتضيف بوضوح:
+
+Greenfield philosophy
+Event Sources
+Document/Movement/State separation
+Inventory boundaries
+Application boundaries
+Accounting boundary
+Runsheet boundary
+Company isolation
+Idempotency
+Concurrency
+Evidence Gate
+Implementation Gate
+
+لذلك لا أرى سببًا لتشغيل التنفيذ بناءً على الوثيقة القديمة منفردة؛ الوثيقة المجمعة الحالية هي baseline أشمل.
+
+الحكم كـ CTO
+المرحلة الأولى حاليًا:
+
+GREENFIELD TARGET DESIGN — SUBSTANTIALLY ESTABLISHED
+
+وليس:
+
+READY FOR IMPLEMENTATION
+
+الفرق مهم جدًا.
+
+لدينا الآن Target Architecture واضح بدرجة عالية، لكن توجد مجموعة صغيرة من الـContracts التي يجب إثباتها قبل الانتقال للكود.
+
+والوثيقة نفسها تتصرف بشكل صحيح عندما تقول إن هذه النقاط لا تُحسم بالتخمين وإنما تنتقل إلى:
+
+PROVE REQUIRED / UNKNOWN.
+
+التقييم الذاتي
+
+هل لدي يقين كافٍ؟
+نعم، بالنسبة لمحتوى الوثيقة نفسها؛ تمت قراءة المحتوى المتاح كاملًا حتى القسم 41 والنهاية.
+
+هل تحققت من المصدر؟
+نعم. المصدر هو الملف الموجود على Branch main، والـSHA الظاهر للملف هو b3bc314c8cd52c3d8ac9ed5158ea02f57515865a.
+
+هل هناك تخمين؟
+لا في وصف ما تنص عليه الوثيقة. أما حكمي بأن الوثيقة "قوية" و"ليست Final Implementation Contract" فهو تقييم تحليلي للوثيقة وليس ادعاءً واردًا فيها.
+
+ما لم أتحقق منه؟
+لم أقم في هذه المرحلة بمقارنة كل قرار في الوثيقة مع الـDatabase Schema أو جميع Edge Functions. لذلك لا أعتبر أي توافق بينها وبين التنفيذ الحالي مثبتًا هنا.
+
+نسبة الثقة في قراءة وتقييم الوثيقة نفسها: 100%.
+
+نسبة الثقة في أن Target الحالي متوافق مع التنفيذ الفعلي: UNKNOWN — ولم يكن ذلك جزءًا من هذه المرحلة.
+
+التقييم النهائي
+
+المرحلة الأولى — Greenfield Target Design: ناجحة كـTarget Baseline، ولم تصل بعد إلى Implementation Baseline.
+
