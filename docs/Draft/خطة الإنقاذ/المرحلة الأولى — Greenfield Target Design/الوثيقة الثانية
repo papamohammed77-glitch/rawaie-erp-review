@@ -1,0 +1,2116 @@
+# RAWAEA ERP
+
+# CENTRAL INVENTORY & STOCK MOVEMENT
+
+## TARGET DESIGN — V1.0
+
+**Status:** Target Architecture Baseline
+**Scope:** Inventory Domain — Manual Stock Vouchers + Central Stock Movement Engine
+**Implementation:** Not started
+**Database Mutation:** None
+**Purpose:** Establish the correct target before repairing the existing implementation.
+
+---
+
+# 1. EXECUTIVE ARCHITECTURE DECISION
+
+نظام RAWAEA لا يجب أن يُبنى حول مجموعة من Edge Functions التي تتصرف كل واحدة منها كأنها نظام مخزون مستقل.
+
+ولا يجب أن يكون الـVoucher نفسه هو المخزون.
+
+ولا يجب أن تكون التطبيقات التشغيلية هي التي تقرر كيف يتحرك المخزون.
+
+التصميم المستهدف هو:
+
+```text
+                         RAWAEA CENTRAL SYSTEM
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+             Master / Decisions          Central Business Rules
+                    │                           │
+                    └─────────────┬─────────────┘
+                                  │
+                         INVENTORY DOMAIN
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+             Document Layer              Movement Layer
+             Stock Voucher              Central Stock Engine
+                    │                           │
+                    └─────────────┬─────────────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    │             │             │
+              Stock State    Inventory Log   Audit/Effects
+             stock_branches   inventory_log   downstream
+```
+
+والتطبيقات التشغيلية:
+
+```text
+Warehouse App
+Van Sales App
+Purchasing App
+Delivery App
+POS
+Telesales
+Counting
+...
+      │
+      ▼
+Operational Event
+      │
+      ▼
+Central Inventory Domain
+      │
+      ▼
+Central Movement Engine
+```
+
+**التطبيق التشغيلي مصدر للحدث والتنفيذ، وليس جزيرة مخزنية مستقلة.**
+
+وهذا يتوافق مع الاتجاه المعماري المثبت في المشروع بأن Inventory هو المرشح الأول للمحرك المركزي بسبب تعدد الدوال التي كانت تكتب مباشرة في المخزون و`inventory_log`.
+
+---
+
+# 2. WHY INVENTORY FIRST
+
+المخزون هو أكثر Domain حساسية في RAWAEA لأن الخطأ فيه لا يبقى داخل المخزن.
+
+يمتد أثره إلى:
+
+```text
+Stock
+ ↓
+Sales Availability
+ ↓
+Van Custody
+ ↓
+Returns
+ ↓
+Purchasing
+ ↓
+Accounting
+ ↓
+Customer/Supplier Balances
+ ↓
+Management Reports
+```
+
+والـCentral Engine Blueprint الموجود بالمشروع يضع:
+
+```text
+stock_branches       → Inventory Engine
+inventory_log        → Inventory Engine
+```
+
+مع قراءة بعض كيانات المبيعات والـRunsheets من المحرك وليس امتلاكها لمنطق المخزون.
+
+إذن إصلاح المخزون لا يعني إصلاح `send-stock-voucher` وحدها.
+
+بل يعني:
+
+> **إعادة تأسيس القاعدة التي يجب أن تعتمد عليها جميع عمليات المخزون.**
+
+---
+
+# 3. THE THREE-LAYER INVENTORY MODEL
+
+يجب الفصل بين ثلاثة أشياء:
+
+## 3.1 Document
+
+المستند الذي يشرح:
+
+> لماذا حدثت الحركة؟
+
+مثال:
+
+```text
+Stock Voucher TV-1001
+```
+
+## 3.2 Movement
+
+الحدث الفعلي:
+
+```text
+MAIN
+   ↓ 50
+BRANCH A
+```
+
+## 3.3 Stock State
+
+الحالة الناتجة:
+
+```text
+MAIN = 50 less
+BRANCH A = 50 more
+```
+
+إذن:
+
+```text
+Voucher ≠ Stock
+Movement ≠ Voucher
+Stock Balance ≠ Movement History
+```
+
+لكنها مترابطة.
+
+---
+
+# 4. SOURCE OF TRUTH
+
+المرجع المقارن داخل المشروع خلص إلى قاعدة صناعية مهمة:
+
+> **Stock Ledger / Movement Ledger هو المرجع التاريخي للحركات، وليس الرصيد الحالي وحده.**
+
+SAP يعتمد Material Documents/Goods Movements، وOdoo يعتمد Stock Moves، وERPNext يعتمد Stock Ledger Entry، بينما الرصيد الحالي هو نتيجة/حالة مشتقة أو مسرّعة للاستعلام.
+
+RAWAEA يجب أن تستفيد من هذه القاعدة.
+
+لكن مع التفريق بين:
+
+### Historical Movement Truth
+
+```text
+inventory_log
+```
+
+و:
+
+### Current Operational Stock State
+
+```text
+stock_branches
+```
+
+فالـ`stock_branches` هو المكان العملي لقراءة الرصيد الحالي، بينما `inventory_log` هو سجل الحركة والتدقيق.
+
+المشروع نفسه يثبت أن:
+
+```text
+stock_branches
+qty
+allocated_qty
+available_qty
+```
+
+تمثل Current Stock State، بينما `inventory_log` يسجل أثر الحركة.
+
+**النتيجة المستهدفة:**
+
+```text
+Movement Engine
+       │
+       ├──> stock_branches
+       │
+       └──> inventory_log
+```
+
+ولا يجوز أن يكتب التطبيقان هذين الجدولين بمنطقين مستقلين.
+
+---
+
+# 5. MANUAL STOCK VOUCHERS
+
+الأذونات المخزنية اليدوية ليست مجرد شاشة إدخال.
+
+هي **مستندات رقابية لتنفيذ أحداث مخزنية لا تأتي من Runsheet أو Sales Order أو Purchase Order مباشرة.**
+
+وتكمل:
+
+```text
+Business Event
+      ↓
+Manual Stock Voucher
+      ↓
+Inventory Movement
+      ↓
+Inventory Log
+      ↓
+Stock State
+```
+
+الوثائق الموجودة بالمشروع تحدد صراحةً مجموعة الأذونات اليدوية، ومن بينها:
+
+* Transfer
+* DirectSale
+* DirectReturn
+* SupplierReturn
+
+كما يظهر في التصميم الحالي أيضًا:
+
+* Scrap
+* Adjustment
+
+وتوضح وثيقة الأذونات تأثير كل نوع على `stock_branches` و`inventory_log`.
+
+وبالتالي فإن Target V1 يتعامل مع **ستة أنواع يدوية**:
+
+```text
+1. Transfer
+2. DirectSale
+3. DirectReturn
+4. SupplierReturn
+5. Scrap
+6. Adjustment
+```
+
+مع ملاحظة معمارية مهمة:
+
+> **Adjustment ليس بالضرورة أن يمر بنفس دورة Transfer ذات المرحلتين، بل هو مسار تسوية مستقل منطقيًا حتى لو استخدم نفس محرك الحركة المركزي.**
+
+وهذا يتفق مع وجود مسار مستقل أصلًا:
+
+```text
+bulk-stock-adjustment
+save-inventory-count
+```
+
+---
+
+# 6. THE SIX MOVEMENT MEANINGS
+
+## 6.1 TRANSFER
+
+المعنى:
+
+> نقل عهدة/مخزون من موقع داخلي إلى موقع داخلي آخر.
+
+مثال:
+
+```text
+MAIN
+ ↓
+ALEX Branch
+```
+
+لا توجد عملية بيع.
+
+لا يوجد خروج من ملكية الشركة.
+
+بل:
+
+```text
+Internal Ownership Redistribution
+```
+
+ولهذا لا يجب أن ينتج عنه ربح أو خسارة بحد ذاته.
+
+الأنظمة المؤسسية تدعم هذا المبدأ؛ Dynamics مثلًا يميز Transfer Journal عن عمليات الإضافة/النقصان، ويعتبره نقلًا بين مواقع المخزون، بينما SAP يسجل التحويل كحركة مخزنية موثقة.
+
+---
+
+# 7. DIRECT SALE — THE VAN / MOBILE SALES CUSTODY EVENT
+
+هذه النقطة جوهرية جدًا في RAWAEA.
+
+الـ`DirectSale` في نموذج الروائع ليس مجرد "بيع" بالمعنى المحاسبي النهائي.
+
+المعنى التشغيلي الصحيح المستهدف هو:
+
+```text
+WAREHOUSE
+    ↓
+SALES VEHICLE / MOBILE SALES CUSTODY
+```
+
+أي:
+
+> **صرف بضاعة من المخزن إلى عهدة سيارة/مندوب البيع المباشر.**
+
+وهذا مدعوم من الوثائق التاريخية التي تصف:
+
+```text
+DirectSale
+= تحميل عهدة مبيعات متنقلة
+```
+
+و:
+
+```text
+DirectReturn
+= تفريغ عهدة مبيعات متنقلة
+```
+
+كما أن الواجهة القديمة كانت تسمي DirectSale صراحة:
+
+> صرف سيارة بيع مباشر
+
+وتستخدم Vehicle كوجهة.
+
+### إذن:
+
+```text
+MAIN / BRANCH
+       ↓
+   VEHICLE
+```
+
+ليس:
+
+```text
+MAIN
+       ↓
+CUSTOMER
+```
+
+والبيع الحقيقي يحدث لاحقًا داخل مسار Van Sales.
+
+وهذا فرق معماري أساسي.
+
+---
+
+# 8. DIRECT RETURN
+
+المعنى المقابل:
+
+```text
+VEHICLE
+    ↓
+WAREHOUSE
+```
+
+أي:
+
+> إعادة البضاعة غير المباعة أو المرتجعة من عهدة سيارة البيع المباشر إلى المخزن.
+
+لذلك:
+
+```text
+DirectSale
+    OUT of warehouse
+    INTO vehicle custody
+
+DirectReturn
+    OUT of vehicle custody
+    INTO warehouse
+```
+
+والوثائق تثبت أن `DirectReturn` يزيد مخزون الوجهة، بينما `DirectSale` ينقص مخزون المصدر.
+
+---
+
+# 9. SUPPLIER RETURN
+
+المعنى:
+
+```text
+WAREHOUSE
+    ↓
+SUPPLIER
+```
+
+وهذا خروج حقيقي من مخزون الشركة إلى طرف خارجي.
+
+لذلك يختلف جوهريًا عن Transfer.
+
+Target:
+
+```text
+Inventory ↓
+Supplier-related financial consequence
+```
+
+والـReference Architecture يميز صراحة بين التحويل الداخلي وبين الحركات التي تنتقل فيها البضاعة إلى طرف خارجي.
+
+---
+
+# 10. SCRAP
+
+المعنى:
+
+```text
+WAREHOUSE
+    ↓
+SCRAP / LOSS
+```
+
+أي أن البضاعة خرجت من المخزون ولم تنتقل إلى مخزن تشغيلي آخر.
+
+لذلك يجب أن يكون لها أثر مستقل في:
+
+```text
+Inventory
+Audit
+Financial consequence
+```
+
+ولا يجوز معاملتها كـTransfer.
+
+---
+
+# 11. ADJUSTMENT
+
+Adjustment ليس وسيلة عادية لتحريك البضاعة.
+
+هو:
+
+> تصحيح فرق مثبت بين الواقع الفعلي والرصيد الدفتري.
+
+مثال:
+
+```text
+System = 100
+Physical = 97
+
+Adjustment = -3
+```
+
+أو:
+
+```text
+System = 100
+Physical = 103
+
+Adjustment = +3
+```
+
+الأنظمة الكبرى تتعامل مع Inventory Adjustment كنوع مستقل من أنواع حركة المخزون والتسوية، وليس كتحويل عادي. Dynamics يميز صراحةً بين Movement وInventory Adjustment وTransfer وCounting، وOdoo لديه Inventory Adjustments مستقلة لتسوية الفروقات بين المسجل والفعلي.
+
+---
+
+# 12. THE CENTRAL MOVEMENT ENGINE
+
+هذا هو قلب التصميم.
+
+لا نريد:
+
+```text
+send-stock-voucher → SQL stock
+receive-stock-voucher → SQL stock
+receive-purchase → SQL stock
+complete-loading → SQL stock
+unload-runsheet → SQL stock
+save-sales-invoice → SQL stock
+bulk-adjustment → SQL stock
+```
+
+بل:
+
+```text
+                    CENTRAL STOCK MOVEMENT ENGINE
+                               │
+          ┌────────────────────┼────────────────────┐
+          │                    │                    │
+       Transfer             Sale Load            Return
+          │                    │                    │
+      Purchase              Supplier              Scrap
+          │                    │                    │
+      Adjustment             Unload               ...
+```
+
+كل حدث يمر من **محرك حركة موحد**.
+
+---
+
+# 13. WHAT THE ENGINE OWNS
+
+المحرك المركزي يجب أن يمتلك فقط ما هو متعلق بسلامة تنفيذ الحركة:
+
+### Stock validation
+
+هل الرصيد المتاح يكفي؟
+
+### Stock locking
+
+هل هناك عملية أخرى تعدل نفس الرصيد؟
+
+### Atomic mutation
+
+هل كل بنود الحركة تنجح أو تفشل معًا؟
+
+### Inventory log
+
+هل تم تسجيل الحركة؟
+
+### State consistency
+
+هل حالة المستند متوافقة مع الحركة؟
+
+### Idempotency
+
+هل تم تنفيذ نفس الحدث من قبل؟
+
+### Concurrency safety
+
+هل يمكن لعمليتين متزامنتين إفساد الرصيد؟
+
+هذه ليست "اختراعًا" من RAWAEA؛ هي من صميم الأنماط الموجودة في الأنظمة المؤسسية.
+
+SAP مثلًا يجعل إنشاء Material Document عملية موحدة للحركة ويصنف Goods Receipt / Goods Issue / Transfer / Reversal ضمن Goods Movement. كما أن واجهة SAP للحركات تدعم idempotency في API للحركات.
+
+---
+
+# 14. WHAT THE ENGINE MUST NOT DECIDE
+
+المحرك لا ينبغي أن يصبح "عقل المنشأة".
+
+هو لا يقرر:
+
+```text
+هل ننشئ فرعًا؟
+هل ننشئ سيارة؟
+هل ننشئ عميلًا؟
+هل نعتمد Master Data؟
+هل العملية التجارية مسموحة أصلًا؟
+```
+
+هذه قرارات Domain / Central System.
+
+التقسيم المستهدف:
+
+```text
+Central Business Domain
+        ↓
+قرر ماذا يجب أن يحدث
+        ↓
+Inventory Movement Engine
+        ↓
+نفذ الحركة بأمان
+```
+
+---
+
+# 15. OPERATIONAL APPLICATIONS
+
+التطبيقات التشغيلية يجب أن تكون:
+
+> **Execution Surfaces**
+
+وليست:
+
+> **Independent Business Systems**
+
+مثال:
+
+### Warehouse App
+
+يطلب:
+
+```text
+Execute Transfer
+```
+
+ولا يخترع منطق خصم المخزون.
+
+### Van Sales App
+
+ينفذ:
+
+```text
+Load Vehicle
+Sell
+Return
+Settle
+```
+
+لكن لا يقرر كيف يتم تسجيل المخزون.
+
+### Purchasing App
+
+ينشئ/يعالج:
+
+```text
+Purchase Receipt
+```
+
+لكن الحركة النهائية تمر عبر القلب المركزي.
+
+### Counting App
+
+ينفذ:
+
+```text
+Physical Count
+```
+
+ثم:
+
+```text
+Adjustment
+```
+
+عبر نفس الحركة المركزية.
+
+---
+
+# 16. MASTER DATA GOVERNANCE
+
+التطبيق التشغيلي لا ينشئ قرارات مصيرية.
+
+مثل:
+
+```text
+Company
+Branch
+Customer
+Supplier
+Chart of Accounts
+Vehicle as organizational entity
+Major Master Definitions
+```
+
+هذه تظل تحت:
+
+```text
+RAWAEA CENTRAL SYSTEM
+```
+
+التطبيقات التشغيلية تستهلك هذه البيانات وتنفذ عليها.
+
+الهدف:
+
+> **تبسيط العمل للمستخدم دون السماح للتطبيق التشغيلي بأن يتحول إلى سلطة مستقلة.**
+
+---
+
+# 17. VEHICLE AS A STOCK LOCATION / CUSTODY
+
+هذه من أهم النقاط التي يجب أن يحسمها Target.
+
+في النموذج التشغيلي للروائع:
+
+```text
+Warehouse
+    ↓
+Vehicle
+    ↓
+Customer
+```
+
+السيارة ليست مجرد "وسيلة نقل".
+
+طالما أنها تحمل بضاعة مملوكة للشركة وتحت عهدة مندوب، فهي تمثل:
+
+> **Stock Custody Node**
+
+وليست بالضرورة Warehouse تقليديًا.
+
+هذا يتيح:
+
+```text
+Vehicle Stock
+Vehicle Sales
+Vehicle Returns
+Vehicle Settlement
+Vehicle Shortage
+```
+
+دون خلط:
+
+```text
+warehouse stock
+```
+
+مع:
+
+```text
+vehicle custody
+```
+
+وهذا يتوافق مع النموذج الموجود في المشروع الذي يطرح صراحةً سؤال "هل السيارة مخزن؟" ويقترح التعامل معها كمخزن متنقل/عهدة مبيعات.
+
+**Target Decision:**
+
+نعتبر السيارة **Stock Custody Location** في Inventory Domain، مع عدم مساواتها تنظيميًا بفرع أو مخزن إداري إلا إذا قرر الـMaster Model ذلك.
+
+---
+
+# 18. STOCK RESERVATION
+
+يجب الفصل بين:
+
+```text
+Physical Quantity
+```
+
+و:
+
+```text
+Allocated / Reserved Quantity
+```
+
+المشروع لديه بالفعل:
+
+```text
+qty
+allocated_qty
+available_qty = qty - allocated_qty
+```
+
+وهذا يتفق مع النموذج الصناعي للحجز: الحجز لا يخفض Physical Stock، بل يخفض Available Stock. Odoo وDynamics يعتمدان نماذج reservation مشابهة، والمرجع المقارن للمشروع يثبت ذلك.
+
+إذن:
+
+```text
+Movement Engine
+    ≠
+Reservation Engine
+```
+
+الحجز ليس حركة مخزنية.
+
+لكن يجب أن يتكامل الاثنان.
+
+---
+
+# 19. TRANSACTION CONTRACT
+
+أي حركة مؤثرة في المخزون يجب أن تنفذ كعملية ذرية عندما تكون الحركة الواحدة متعددة الآثار.
+
+المفهوم المستهدف:
+
+```text
+START TRANSACTION
+
+Validate Context
+        ↓
+Lock Document / Relevant State
+        ↓
+Resolve Movement
+        ↓
+Lock Stock Rows
+        ↓
+Validate ALL Lines
+        ↓
+Apply ALL Stock Mutations
+        ↓
+Write ALL Inventory Logs
+        ↓
+Update Document State
+        ↓
+Commit
+```
+
+وأي failure:
+
+```text
+ROLLBACK EVERYTHING
+```
+
+خصوصًا:
+
+```text
+Item A succeeds
+Item B fails
+```
+
+النتيجة:
+
+```text
+NO STOCK CHANGE
+NO PARTIAL LOG
+NO PARTIAL DOCUMENT STATE
+```
+
+---
+
+# 20. MULTI-ITEM ATOMICITY
+
+هذه قاعدة غير قابلة للتفاوض.
+
+Voucher يحتوي:
+
+```text
+Item A = 10
+Item B = 20
+Item C = 5
+```
+
+لا يجوز:
+
+```text
+A deducted
+B deducted
+C failed
+```
+
+Target:
+
+```text
+A = unchanged
+B = unchanged
+C = unchanged
+Voucher = unchanged
+Logs = unchanged
+```
+
+أو:
+
+```text
+ALL SUCCESS
+```
+
+وهذا هو السبب الذي جعل مشكلة multi-item partial state تظهر كخطر معماري مستقل عن CAS.
+
+---
+
+# 21. CONCURRENCY
+
+وجود CAS وحده ليس Target.
+
+وجود `FOR UPDATE` وحده ليس Target.
+
+Target:
+
+```text
+Concurrent Request
+        ↓
+Same logical stock
+        ↓
+Serialized safely
+        ↓
+One valid result
+        ↓
+No lost update
+        ↓
+No negative stock
+        ↓
+No duplicate movement
+```
+
+ويجب أن يكون الاختبار الفعلي لاحقًا وليس مجرد Static PASS.
+
+---
+
+# 22. DUPLICATE EXECUTION
+
+المستخدم قد يضغط مرتين.
+
+الشبكة قد تعيد الطلب.
+
+التطبيق قد يعيد الإرسال.
+
+لذلك Target يحتاج:
+
+```text
+Idempotent Operation
+```
+
+بحيث:
+
+```text
+First execution
+    → movement posted
+
+Second identical execution
+    → does NOT post another movement
+```
+
+وهذا يتوافق مع وجود idempotency في واجهات SAP الخاصة بإنشاء Goods Movement.
+
+---
+
+# 23. VOUCHER LIFECYCLE
+
+الـVoucher ليس مجرد سجل.
+
+Target lifecycle:
+
+```text
+Draft
+  ↓
+Approved / Authorized
+  ↓
+Sent
+  ↓
+Received
+  ↓
+Completed
+```
+
+مع:
+
+```text
+Cancelled
+```
+
+كحالة نهائية مسموحة وفق قواعد محددة.
+
+لكن **ليس كل نوع Voucher يحتاج كل المراحل**.
+
+مثال:
+
+### Transfer
+
+```text
+Draft
+ ↓
+Sent
+ ↓
+Received
+ ↓
+Completed
+```
+
+### DirectSale / Vehicle Load
+
+```text
+Draft
+ ↓
+Sent
+```
+
+ثم تصبح البضاعة في عهدة السيارة، وتدخل دورة البيع/التسوية الخاصة بها.
+
+### SupplierReturn
+
+```text
+Draft
+ ↓
+Sent
+```
+
+لأن الخروج إلى المورد لا يحتاج "استلامًا داخليًا" من نفس المسار.
+
+### Adjustment
+
+مسار مستقل:
+
+```text
+Count
+ ↓
+Review
+ ↓
+Adjustment
+ ↓
+Posted
+```
+
+وهذه نقطة مهمة: **لا نفرض Lifecycle موحدًا على أحداث مختلفة فقط لأننا نريد كودًا موحدًا.**
+
+---
+
+# 24. CANCEL
+
+الإلغاء يجب ألا يعني:
+
+```text
+DELETE voucher
+```
+
+بعد أن تصبح الحركة منشورة.
+
+القاعدة الصناعية التي يثبتها المرجع المقارن:
+
+> المستند المنشور لا يُصحح عادةً بحذف التاريخ، بل بمستند/حركة عكسية.
+
+إذن:
+
+### Before Posting
+
+يمكن:
+
+```text
+Cancel Draft
+```
+
+بدون حركة مخزنية.
+
+### After Posting
+
+لا نحذف التاريخ.
+
+نستخدم:
+
+```text
+Reverse Movement
+```
+
+إذا كان ذلك مسموحًا لهذا النوع.
+
+---
+
+# 25. INVENTORY LOG CONTRACT
+
+كل حركة مؤثرة في المخزون يجب أن تنتج أثرًا واضحًا في `inventory_log`.
+
+على الأقل يجب أن نستطيع معرفة:
+
+```text
+Company
+Movement Type
+Item
+Quantity
+Source
+Destination
+Reference Document
+User
+Before
+After
+Timestamp
+```
+
+الهدف ليس مجرد:
+
+```text
+log row exists
+```
+
+بل:
+
+> **يمكن للمراجع أن يعيد بناء ماذا حدث، ولماذا، ومن نفذه، وعلى أي مخزون.**
+
+وهذا يتفق مع النموذج الصناعي الذي يجعل لكل Goods Movement مستندًا وأثرًا قابلًا للتتبع. SAP يصف إنشاء مستند لكل Goods Movement كجزء من الـaudit trail.
+
+---
+
+# 26. ACCOUNTING BOUNDARY
+
+ليس كل Inventory Movement = Financial Transaction.
+
+هذه قاعدة مهمة جدًا.
+
+### Internal Transfer
+
+```text
+MAIN → BRANCH
+```
+
+لا يعني ربحًا أو خسارة.
+
+قد يحتاج فقط إلى إعادة تصنيف تحليلي/عهدة إذا كان نموذج الحسابات يتطلب ذلك.
+
+### Vehicle Load
+
+```text
+WAREHOUSE → VEHICLE
+```
+
+ليس Sale.
+
+هو نقل عهدة.
+
+### Supplier Return
+
+```text
+WAREHOUSE → SUPPLIER
+```
+
+له أثر مالي محتمل.
+
+### Scrap
+
+```text
+WAREHOUSE → LOSS
+```
+
+له أثر مالي محتمل.
+
+### Adjustment
+
+قد ينتج:
+
+```text
+Gain
+أو
+Loss
+```
+
+بحسب سبب الفرق وقواعد المحاسبة.
+
+إذن:
+
+```text
+Inventory Engine
+        ↓
+Inventory Event
+        ↓
+Accounting Engine
+```
+
+ولا نضع Accounting Logic عشوائيًا داخل كل Edge Function.
+
+---
+
+# 27. COMPETITIVE BENCHMARK — WHAT WE SHOULD NOT REINVENT
+
+## SAP
+
+SAP يقوم على:
+
+```text
+Goods Movement
+        ↓
+Material Document
+        ↓
+Stock Change
+        ↓
+Audit / Financial Integration
+```
+
+ويدعم:
+
+* Goods Receipt
+* Goods Issue
+* Transfer Posting
+* Reversal
+* Inventory Management
+* Physical Inventory
+
+كما يميز بين stock transfer داخل النظام والحالات التي تحتاج tracking للحركة في transit.
+
+### RAWAEA should adopt
+
+* Movement-centric model
+* Document traceability
+* Explicit movement types
+* Reversal instead of destructive deletion
+* Strong separation between operational document and stock effect
+
+### RAWAEA should NOT copy blindly
+
+* SAP's massive configuration model
+* enterprise complexity unnecessary for V1
+* thousands of movement types
+
+---
+
+# 28. ODOO
+
+Odoo يثبت نموذجًا مهمًا:
+
+```text
+Operation
+   ↓
+Stock Move
+   ↓
+Location change
+```
+
+ويتعامل مع:
+
+* Receipts
+* Delivery
+* Internal Transfers
+* Inventory Adjustments
+* Returns
+* Multi-step operations
+* Reservation
+
+كما يمكن أن يكون Warehouse Flow:
+
+```text
+1 step
+2 steps
+3 steps
+```
+
+بحسب درجة الرقابة المطلوبة.
+
+### RAWAEA should adopt
+
+* Operation types
+* Internal transfer abstraction
+* Separate adjustment workflow
+* Reservation separation
+* Flexible operational steps
+
+### RAWAEA innovation
+
+بدل جعل كل تطبيق يملك Operation Engine:
+
+```text
+All operations
+      ↓
+RAWAEA Central Inventory Core
+```
+
+---
+
+# 29. DYNAMICS 365
+
+Dynamics يقدم فكرة شديدة الأهمية:
+
+```text
+Movement
+Inventory Adjustment
+Transfer
+Counting
+```
+
+كأنواع مختلفة من Inventory Journals.
+
+والـTransfer يمكن أن يكون:
+
+```text
+Source
+ ↓
+Destination
+```
+
+بينما Transfer Order يمكن أن يتعامل مع shipment/receipt وin-transit عندما يحتاج السيناريو ذلك.
+
+كما يدعم Approval Workflows للـInventory Journals.
+
+### RAWAEA should adopt
+
+* Explicit movement categories
+* Approval where business risk requires it
+* Separate counting/adjustment
+* Distinction between immediate transfer and transit transfer
+
+### RAWAEA innovation
+
+عدم بناء ERP ضخم.
+
+نأخذ:
+
+```text
+Industrial discipline
+```
+
+ونضعه في:
+
+```text
+SME operational simplicity
+```
+
+---
+
+# 30. THE RAWAEA DIFFERENTIATOR
+
+نحن لا نريد:
+
+> SAP مصغر.
+
+ولا:
+
+> Odoo آخر.
+
+ولا:
+
+> Dynamics مبسط.
+
+نريد:
+
+# RAWAEA MODEL
+
+```text
+CENTRAL DECISION SYSTEM
+          +
+CENTRAL INVENTORY CORE
+          +
+LIGHTWEIGHT OPERATIONAL APPS
+          +
+REAL-TIME EXECUTION
+          +
+AUDITABLE MOVEMENT LEDGER
+```
+
+وهنا تكمن قيمة الروائع:
+
+### Enterprise Control
+
+من الأنظمة الكبيرة.
+
+### Operational Simplicity
+
+من تطبيقات التشغيل الخفيفة.
+
+### Mobile Execution
+
+من طبيعة نشاط التوزيع.
+
+### Central Governance
+
+من فلسفة النظام الأم.
+
+---
+
+# 31. THE CENTRAL ENGINE CONTRACT
+
+المحرك المركزي لا ينبغي أن يعرف:
+
+```text
+warehouse.html
+van-sales.html
+purchases.html
+returns.html
+```
+
+بل يعرف:
+
+```text
+Movement Request
+```
+
+مثل:
+
+```text
+TRANSFER
+DIRECT_SALE
+DIRECT_RETURN
+SUPPLIER_RETURN
+SCRAP
+ADJUSTMENT
+PURCHASE_RECEIPT
+VEHICLE_LOAD
+VEHICLE_RETURN
+...
+```
+
+ثم ينفذ الحركة وفق Contract موحد.
+
+---
+
+# 32. MOVEMENT MODEL
+
+Target conceptual model:
+
+```text
+Movement
+────────────────────────
+Company
+Movement Type
+Source Location
+Destination Location
+Item
+Quantity
+Reference Document
+Reference Type
+Reference ID
+User
+Timestamp
+Reason
+Status
+```
+
+وهذا قريب جدًا من النمط الصناعي الذي يقارن بين:
+
+```text
+Material
+Quantity
+Source
+Destination
+Movement Type
+Reference Document
+Posting Date
+```
+
+في SAP/Odoo/ERPNext.
+
+---
+
+# 33. LOCATION MODEL
+
+Target يجب أن يسمح بتمييز:
+
+```text
+MAIN WAREHOUSE
+BRANCH
+VEHICLE
+SUPPLIER
+CUSTOMER
+SCRAP / LOSS
+```
+
+لكن لا يعني ذلك أن كل واحد منها يجب أن يصبح "Branch" في الـMaster Data.
+
+نحن نفرق بين:
+
+```text
+Organizational Entity
+```
+
+و:
+
+```text
+Inventory Location / Custody
+```
+
+وهذا سيمنع أخطاء سابقة مثل محاولة تحويل سيارة البيع إلى Branch إداري فقط لأنها تحتاج رصيدًا مخزنيًا.
+
+---
+
+# 34. COMPANY ISOLATION
+
+كل حركة يجب أن تكون محكومة بـ:
+
+```text
+Company Context
+      ↓
+Voucher
+      ↓
+Source/Destination
+      ↓
+Item
+      ↓
+Stock
+```
+
+ولا يجوز أن يكون:
+
+```text
+FK exists
+```
+
+هو الدليل الوحيد على Company ownership.
+
+الـTarget الأمني:
+
+> لا يمكن لحركة تنتمي إلى Company A أن تعدل Stock تابعًا لـCompany B.
+
+وهذه ليست ميزة إضافية.
+
+هذه قاعدة أساسية في النظام.
+
+---
+
+# 35. ITEM RESOLUTION
+
+الـItem ليس مجرد:
+
+```text
+item_code
+```
+
+المحرك يجب أن يصل إلى:
+
+```text
+Authoritative Item
+      ↓
+Company Scope
+      ↓
+Stock Location
+      ↓
+Stock Row
+```
+
+ويجب ألا يسمح بتفسير كود Item بطريقة تؤدي إلى تعديل رصيد مختلف.
+
+---
+
+# 36. ERROR SEMANTICS
+
+الأخطاء يجب أن تكون مفهومة ومحددة.
+
+مثل:
+
+```text
+Voucher not found
+Voucher already processed
+Invalid voucher type
+Invalid state transition
+Invalid source
+Invalid destination
+Item not found
+Stock row not found
+Insufficient available stock
+Company isolation violation
+Duplicate execution
+Concurrent modification
+```
+
+لكن الـAPI الخارجي يظل بسيطًا.
+
+---
+
+# 37. API CONTRACT
+
+الـEdge Function مسؤول عن:
+
+```text
+HTTP
+CORS
+OPTIONS
+Authentication
+Request Parsing
+Input Validation
+Company Context
+Authorization
+Calling Central Core
+Mapping Result → HTTP Response
+```
+
+ولا يجب أن يصبح هو مخزن Business Logic للحركة نفسها.
+
+الـresponse الخارجي يجب أن يظل مستقرًا قدر الإمكان.
+
+مثال:
+
+```json
+{
+  "success": true,
+  "msg": "..."
+}
+```
+
+أو:
+
+```json
+{
+  "success": false,
+  "msg": "..."
+}
+```
+
+لكن الرسالة الداخلية/التفاصيل التقنية لا يجب أن تُكشف للمستخدم بلا حاجة.
+
+---
+
+# 38. MANUAL VOUCHER VS AUTOMATIC MOVEMENT
+
+هذه نقطة مهمة.
+
+ليس معنى:
+
+```text
+Manual Voucher
+```
+
+أن الحركة "يدوية" على مستوى المحرك.
+
+المعنى:
+
+> **مصدر المستند يدوي.**
+
+لكن التنفيذ النهائي يجب أن يمر من نفس القلب:
+
+```text
+Manual Voucher
+      ↓
+Central Movement Engine
+```
+
+و:
+
+```text
+Purchase Receipt
+      ↓
+Central Movement Engine
+```
+
+و:
+
+```text
+Vehicle Return
+      ↓
+Central Movement Engine
+```
+
+وهكذا.
+
+**مصدر الحدث يختلف، لكن مصدر الحقيقة التنفيذية واحد.**
+
+---
+
+# 39. MANUAL VOUCHER + VAN SALES
+
+المسار المستهدف:
+
+```text
+Warehouse
+   │
+   │ DirectSale / Vehicle Load
+   ▼
+Vehicle Custody
+   │
+   ├── Sales
+   │
+   ├── Returns
+   │
+   └── Settlement
+   │
+   ▼
+Warehouse
+```
+
+وبالتالي لا يجب أن نخلط:
+
+```text
+DirectSale
+```
+
+مع:
+
+```text
+Customer Sale
+```
+
+الأول:
+
+> نقل عهدة.
+
+والثاني:
+
+> حدث بيع.
+
+هذه نقطة ستمنع قدرًا كبيرًا من أخطاء التصميم السابقة.
+
+---
+
+# 40. DOCUMENTARY CONTROL
+
+كل حركة يجب أن يكون لها:
+
+```text
+WHO
+WHAT
+WHY
+FROM
+TO
+WHEN
+HOW MUCH
+REFERENCE
+RESULT
+```
+
+وبذلك يستطيع النظام الإجابة:
+
+> أين ذهبت هذه الكمية؟
+
+بدون البحث اليدوي في عشر دوال.
+
+---
+
+# 41. AUDIT PRINCIPLE
+
+المستخدم قد يخطئ.
+
+النظام قد يفشل.
+
+الشبكة قد تتكرر.
+
+المشكلة قد تُكتشف بعد أيام.
+
+لذلك Target يجب أن يجعل:
+
+```text
+Current Stock
++
+Movement History
++
+Document History
++
+User Identity
+```
+
+قابلة للمقارنة.
+
+هذه هي الحماية الحقيقية للمنشأة.
+
+---
+
+# 42. WHAT WE ARE DELIBERATELY NOT BUILDING
+
+في V1 لا نريد:
+
+```text
+Full SAP WM
+Full EWM
+Complex WMS locations
+Huge movement type catalog
+Advanced valuation engine
+Cross-company inventory complexity
+Unnecessary multi-tenant abstraction
+```
+
+ولا نريد أن نعيد اختراع:
+
+```text
+basic stock movement
+reservation
+transfer
+adjustment
+audit trail
+```
+
+هذه أفكار ناضجة صناعيًا.
+
+نأخذها.
+
+ثم نبسطها.
+
+---
+
+# 43. WHAT RAWAEA ADDS
+
+التميّز الحقيقي سيكون في الربط:
+
+```text
+Warehouse
+   +
+Vehicle Custody
+   +
+Van Sales
+   +
+Returns
+   +
+Inventory
+   +
+Settlement
+```
+
+في نموذج واحد.
+
+بدل أن تكون:
+
+```text
+Warehouse System
++
+Van Sales System
++
+Settlement System
++
+Inventory System
+```
+
+منفصلة.
+
+بل:
+
+```text
+                 RAWAEA CORE
+                     │
+        ┌────────────┼────────────┐
+        │            │            │
+     Warehouse      Van        Sales
+        │          Custody        │
+        └────────────┼────────────┘
+                     │
+                Settlement
+```
+
+---
+
+# 44. TARGET ARCHITECTURE SUMMARY
+
+النسخة النهائية المفاهيمية:
+
+```text
+                  ┌──────────────────────┐
+                  │   RAWAEA CENTRAL     │
+                  │   BUSINESS SYSTEM    │
+                  └──────────┬───────────┘
+                             │
+                     Business Decision
+                             │
+                             ▼
+                  ┌──────────────────────┐
+                  │ INVENTORY DOMAIN     │
+                  │                      │
+                  │ Voucher / Movement   │
+                  │ Rules / Context      │
+                  └──────────┬───────────┘
+                             │
+                             ▼
+                  ┌──────────────────────┐
+                  │ CENTRAL STOCK ENGINE │
+                  │                      │
+                  │ Lock                 │
+                  │ Validate             │
+                  │ Mutate               │
+                  │ Log                  │
+                  │ Idempotency          │
+                  │ Atomicity             │
+                  └───────┬───────┬──────┘
+                          │       │
+                          ▼       ▼
+                 stock_branches  inventory_log
+                          │
+                          ▼
+                 Current Stock State
+```
+
+---
+
+# 45. THE GOLDEN RULE
+
+يجب أن يصبح لدينا:
+
+> **One Inventory Truth.**
+
+وليس:
+
+```text
+Warehouse Truth
+Van Truth
+Voucher Truth
+Sales Truth
+Purchase Truth
+Runsheet Truth
+```
+
+بل:
+
+```text
+ONE CENTRAL INVENTORY TRUTH
+```
+
+والتطبيقات المختلفة مجرد طرق مختلفة لإطلاق الأحداث.
+
+---
+
+# 46. IMPLEMENTATION PHILOSOPHY
+
+بعد اعتماد هذا التصميم، لا نبدأ بإصلاح الدوال الخمس منفردة.
+
+بل:
+
+```text
+TARGET DESIGN
+      ↓
+CENTRAL MOVEMENT CONTRACT
+      ↓
+CENTRAL ENGINE
+      ↓
+MANUAL VOUCHER LIFECYCLE
+      ↓
+create
+send
+receive
+complete
+cancel
+      ↓
+Other Inventory Paths
+      ↓
+Applications
+```
+
+أي أن:
+
+> **الدوال هي مستخدمون للقلب، وليست القلب نفسه.**
+
+---
+
+# 47. REPAIR ORDER
+
+الترتيب المستهدف:
+
+### Phase 1 — Inventory Foundation
+
+```text
+Movement Model
+Location/Custody Model
+Movement Types
+Transaction Contract
+Inventory Log Contract
+Stock State Contract
+```
+
+### Phase 2 — Central Engine
+
+```text
+post / execute stock movement
+```
+
+### Phase 3 — Manual Voucher Lifecycle
+
+```text
+create-stock-voucher
+send-stock-voucher
+receive-stock-voucher
+complete-stock-voucher
+cancel-stock-voucher
+```
+
+### Phase 4 — Adjustments
+
+```text
+save-inventory-count
+bulk-stock-adjustment
+```
+
+### Phase 5 — Existing Operational Paths
+
+```text
+Purchase
+Loading
+Unloading
+Returns
+Sales
+Runsheets
+```
+
+كلها تعاد توصيلها بالقلب **فقط حيث يثبت أنها تحتاج ذلك**.
+
+---
+
+# 48. SUCCESS CRITERIA
+
+لن نعتبر Inventory ناجحًا لأنه:
+
+```text
+code works
+```
+
+بل عندما نستطيع إثبات:
+
+```text
+Every stock movement
+      ↓
+has one authoritative execution path
+
+Every movement
+      ↓
+has an auditable record
+
+Every mutation
+      ↓
+is atomic
+
+Every concurrent operation
+      ↓
+is safe
+
+Every company
+      ↓
+is isolated
+
+Every vehicle custody movement
+      ↓
+is traceable
+
+Every adjustment
+      ↓
+has documentary justification
+
+Every operational application
+      ↓
+uses the central truth
+```
+
+---
+
+# 49. FINAL ARCHITECTURAL PRINCIPLE
+
+RAWAEA لا يحتاج إلى اختراع نظام مخزون جديد للعالم.
+
+العالم أنفق بالفعل سنوات ومليارات الدولارات على هذه المشكلة.
+
+SAP يثبت نموذج Material Documents/Goods Movements.
+
+Odoo يثبت نموذج Operations/Stock Moves/Reservations/Adjustments.
+
+Dynamics يثبت فصل Movement/Transfer/Adjustment/Counting وربط الحركة بالتدقيق والمحاسبة.
+
+إذن:
+
+> **نأخذ العظم الصناعي المثبت، ونبني عليه عقل الروائع الخاص بالتوزيع والسيارات والعهدة والتشغيل المركزي.**
+
+وهذه هي المساحة التي يمكن أن يضيف فيها RAWAEA قيمة حقيقية.
+
+---
+
+# 50. TARGET DESIGN DECISION
+
+## TARGET STATUS
+
+**DESIGN BASELINE — READY FOR ARCHITECTURAL REVIEW**
+
+وليس:
+
+```text
+READY FOR CODE
+```
+
+لأن الخطوة الصحيحة التالية ليست كتابة `post_stock_movement()` مباشرة.
+
+الخطوة التالية هي تثبيت **Movement Contract + Ownership/Custody Matrix + Voucher Type Matrix** كمرجع واحد، ثم بناء المحرك عليه.
+
+---
+
+# 51. THE THREE MATRICES THAT MUST EXIST BEFORE CODE
+
+## A — Inventory Ownership Matrix
+
+```text
+Warehouse
+Branch
+Vehicle
+Supplier
+Customer
+Scrap
+```
+
+## B — Movement Matrix
+
+```text
+Transfer
+DirectSale
+DirectReturn
+SupplierReturn
+Scrap
+Adjustment
+PurchaseReceipt
+VehicleLoad
+VehicleReturn
+Sale
+SaleReturn
+...
+```
+
+## C — Voucher / Movement / Accounting Matrix
+
+لكل حدث:
+
+```text
+Document
+Source
+Destination
+Stock Effect
+Inventory Log
+Custody Effect
+Accounting Effect
+Approval
+Lifecycle
+Reversal
+```
+
+**هذه الثلاثة هي العقد الحقيقي الذي سيمنعنا من العودة إلى دائرة الإصلاحات الجزئية.**
+
+---
+
+# 52. FINAL VISION
+
+في النهاية يجب أن يكون RAWAEA هكذا:
+
+```text
+                         SYSTEM OF RECORD
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ RAWAEA CENTRAL CORE │
+                    └──────────┬──────────┘
+                               │
+                  ┌────────────┴────────────┐
+                  │                         │
+            Master Decisions          Business Rules
+                  │                         │
+                  └────────────┬────────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │ INVENTORY CORE      │
+                    └──────────┬──────────┘
+                               │
+                     ONE MOVEMENT ENGINE
+                               │
+            ┌──────────────────┼──────────────────┐
+            │                  │                  │
+        Warehouse            Vehicle          External
+            │                Custody           Parties
+            │                  │                  │
+            └──────────────────┼──────────────────┘
+                               │
+                               ▼
+                       INVENTORY LEDGER
+                               │
+                    ┌──────────┴──────────┐
+                    │                     │
+              Current State           Audit Trail
+             stock_branches         inventory_log
+                    │                     │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                         ERP Intelligence
+```
+
+**هذا هو القلب الذي ينبغي أن تُصلح حوله الأذونات المخزنية، وليس الأذونات التي نحاول أن نجعلها قلب النظام.**
