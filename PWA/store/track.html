@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>تتبع الطلب | الروائع</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../core.js"></script>
+    <script>var supabase = window.supabase;</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:Tahoma,sans-serif;background:#f1f5f9;-webkit-tap-highlight-color:transparent}
+        .card{background:#fff;border-radius:20px;padding:1.25rem;box-shadow:0 4px 15px rgba(0,0,0,0.05)}
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+<div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6">
+    <div class="max-w-2xl mx-auto text-center">
+        <div class="w-16 h-16 bg-white/20 rounded-2xl mx-auto flex items-center justify-center mb-4">
+            <i class="fa-solid fa-magnifying-glass-location text-white text-2xl"></i>
+        </div>
+        <h1 class="text-2xl font-black mb-2">تتبع طلبك</h1>
+        <p class="text-blue-100 text-sm">أدخل رقم الطلب لمعرفة حالته</p>
+    </div>
+</div>
+
+<main class="flex-1 max-w-2xl mx-auto w-full p-4">
+    <div class="card mb-4">
+        <label class="block text-xs font-bold text-gray-600 mb-2">رقم الطلب</label>
+        <div class="flex gap-2">
+            <input type="text" id="orderCodeInput" placeholder="مثلاً: ORD-12345" class="flex-1 p-3 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-blue-600 outline-none font-bold text-sm">
+            <button onclick="Tracker.lookup()" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-black text-sm hover:bg-blue-700 transition">
+                <i class="fa-solid fa-search ml-1"></i> استعلام
+            </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-2">أدخل رقم الطلب الذي وصلك عند إتمام الشراء</p>
+    </div>
+
+    <div id="resultContainer"></div>
+
+    <div class="text-center mt-8">
+        <a href="index.html" class="text-blue-600 font-bold text-sm hover:underline">
+            <i class="fa-solid fa-arrow-right ml-1"></i> العودة للمتجر
+        </a>
+    </div>
+</main>
+
+<footer class="text-center py-4 text-xs text-gray-400">
+    جميع الحقوق محفوظة © الروائع ERP 2026
+</footer>
+
+<script>
+var Tracker = {
+    lookup: function() {
+        var orderCode = (document.getElementById('orderCodeInput').value || '').trim();
+        if (!orderCode) {
+            Swal.fire({ icon: 'warning', title: 'أدخل رقم الطلب' });
+            return;
+        }
+        
+        var container = document.getElementById('resultContainer');
+        container.innerHTML = '<div class="card text-center py-8"><i class="fa-solid fa-spinner fa-spin text-2xl text-blue-600"></i><p class="mt-2 text-gray-500">جاري البحث...</p></div>';
+        
+        var self = this;
+        Promise.all([
+            supabase.from('orders').select('*').eq('order_code', orderCode).maybeSingle(),
+            supabase.from('order_details').select('*').eq('order_code', orderCode)
+        ]).then(function(results) {
+            var orderRes = results[0], detailsRes = results[1];
+            if (!orderRes.data) {
+                container.innerHTML = '<div class="card text-center py-8"><i class="fa-solid fa-circle-xmark text-4xl text-red-400 mb-3"></i><p class="font-bold text-gray-700">الطلب غير موجود</p><p class="text-sm text-gray-400 mt-1">تأكد من رقم الطلب وحاول مرة أخرى</p></div>';
+                return;
+            }
+            self.showStatus(container, orderRes.data, detailsRes.data || []);
+        }).catch(function() {
+            container.innerHTML = '<div class="card text-center py-8"><i class="fa-solid fa-triangle-exclamation text-4xl text-red-400 mb-3"></i><p class="font-bold text-gray-700">فشل الاتصال</p><p class="text-sm text-gray-400 mt-1">تحقق من اتصالك بالإنترنت</p></div>';
+        });
+    },
+
+    showStatus: function(container, order, details) {
+        var statusLabels = {
+            'Draft': 'قيد المراجعة',
+            'Confirmed': 'تم التأكيد',
+            'Pending': 'قيد الانتظار',
+            'Picking': 'جاري التجهيز',
+            'Picked': 'تم التجهيز',
+            'Loading': 'جاري التحميل',
+            'Loaded': 'تم التحميل',
+            'Delivering': 'خارج للتوصيل',
+            'Delivered': 'تم التسليم',
+            'Cancelled': 'ملغي'
+        };
+        var statusLabel = statusLabels[order.order_status] || order.order_status;
+        
+        var steps = [
+            { key: 'Confirmed', label: 'تم التأكيد', icon: 'fa-check-circle' },
+            { key: 'Picked', label: 'تم التجهيز', icon: 'fa-box' },
+            { key: 'Loaded', label: 'تم التحميل', icon: 'fa-truck-loading' },
+            { key: 'Delivering', label: 'خارج للتوصيل', icon: 'fa-truck-fast' },
+            { key: 'Delivered', label: 'تم التسليم', icon: 'fa-home' }
+        ];
+        
+        var currentStep = 0;
+        if (order.order_status === 'Delivered') currentStep = 4;
+        else if (order.order_status === 'Delivering') currentStep = 3;
+        else if (order.order_status === 'Loaded') currentStep = 2;
+        else if (order.order_status === 'Picked' || order.order_status === 'Picking') currentStep = 1;
+        
+        var progressHtml = '<div class="relative mb-6 px-2">';
+        progressHtml += '<div class="absolute top-5 right-4 left-4 h-1.5 bg-gray-200 rounded-full z-0"></div>';
+        progressHtml += '<div class="absolute top-5 right-4 h-1.5 bg-green-500 rounded-full z-10 transition-all duration-700" style="width:' + (currentStep / 4 * 100) + '%"></div>';
+        progressHtml += '<div class="flex items-start justify-between relative z-20">';
+        
+        for (var s = 0; s < steps.length; s++) {
+            var isDone = s < currentStep;
+            var isCur = s === currentStep;
+            var isPending = s > currentStep;
+            var circleClass = '';
+            var textClass = '';
+            
+            if (isDone) {
+                circleClass = 'bg-green-500 text-white';
+                textClass = 'text-green-600';
+            } else if (isCur) {
+                circleClass = 'bg-blue-500 text-white ring-4 ring-blue-100';
+                textClass = 'text-blue-600 font-black';
+            } else {
+                circleClass = 'bg-gray-200 text-gray-400';
+                textClass = 'text-gray-400';
+            }
+            
+            progressHtml += '<div class="flex flex-col items-center" style="width:20%">';
+            progressHtml += '<div class="w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shadow ' + circleClass + '">';
+            if (isDone) {
+                progressHtml += '<i class="fa-solid fa-check"></i>';
+            } else {
+                progressHtml += (s + 1);
+            }
+            progressHtml += '</div>';
+            progressHtml += '<span class="text-[10px] font-bold mt-2 text-center leading-tight ' + textClass + '">' + steps[s].label + '</span>';
+            progressHtml += '</div>';
+        }
+        
+        progressHtml += '</div></div>';
+        
+        var statusColor = order.order_status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                         order.order_status === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                         'bg-blue-100 text-blue-700';
+        
+        var itemsHtml = '';
+        if (details.length > 0) {
+            itemsHtml = '<div class="mt-4"><h4 class="font-bold text-sm text-gray-700 mb-2"><i class="fa-solid fa-list-check ml-1"></i> الأصناف</h4>';
+            itemsHtml += '<table class="w-full text-sm"><thead><tr class="bg-gray-100"><th class="p-2 text-right">الصنف</th><th class="p-2 text-center">الكمية</th><th class="p-2 text-center">السعر</th><th class="p-2 text-center">الإجمالي</th></tr></thead><tbody>';
+            
+            var itemsTotal = 0;
+            for (var d = 0; d < details.length; d++) {
+                var lt = (Number(details[d].qty) || 0) * (Number(details[d].unit_price) || 0);
+                itemsTotal += lt;
+                itemsHtml += '<tr class="border-t"><td class="p-2 font-semibold">' + (details[d].item_name || '') + '</td><td class="p-2 text-center">' + details[d].qty + '</td><td class="p-2 text-center">' + Number(details[d].unit_price || 0).toFixed(2) + '</td><td class="p-2 text-center font-bold">' + lt.toFixed(2) + '</td></tr>';
+            }
+            itemsHtml += '</tbody></table></div>';
+        }
+        
+        var html = '<div class="card">';
+        html += '<div class="bg-blue-50 p-4 rounded-xl mb-4">';
+        html += '<div class="flex justify-between items-start mb-2">';
+        html += '<div><p class="text-xs text-gray-500">رقم الطلب</p><p class="font-black text-lg text-gray-800">' + (order.order_code || '') + '</p></div>';
+        html += '<span class="px-3 py-1 rounded-full text-xs font-bold ' + statusColor + '">' + statusLabel + '</span>';
+        html += '</div>';
+        html += '<div class="grid grid-cols-2 gap-2 text-sm">';
+        html += '<div><p class="text-xs text-gray-500">التاريخ</p><p class="font-bold">' + (order.order_date ? new Date(order.order_date).toLocaleDateString('ar-EG') : '') + '</p></div>';
+        html += '<div><p class="text-xs text-gray-500">العميل</p><p class="font-bold">' + (order.customer_name || '') + '</p></div>';
+        html += '<div><p class="text-xs text-gray-500">المنطقة</p><p class="font-bold">' + (order.area || '') + '</p></div>';
+        html += '<div><p class="text-xs text-gray-500">الإجمالي</p><p class="font-black text-blue-600 text-lg">' + Number(order.total_amount || 0).toLocaleString() + '</p></div>';
+        html += '</div></div>';
+        html += progressHtml;
+        html += itemsHtml;
+        html += '</div>';
+        
+        container.innerHTML = html;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    var input = document.getElementById('orderCodeInput');
+    if (input) {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                Tracker.lookup();
+            }
+        });
+    }
+    
+    var params = new URLSearchParams(window.location.search);
+    var orderFromUrl = params.get('order');
+    if (orderFromUrl) {
+        input.value = orderFromUrl;
+        Tracker.lookup();
+    }
+});
+
+RW_SW.register('../sw.js');
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
