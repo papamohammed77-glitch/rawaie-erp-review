@@ -1,0 +1,36 @@
+# _headers - النسخة المعمارية المحسنة والآمنة للروائع ERP
+
+# --- 1. ترويسات الأمان العامة لجميع الملفات (مهم جداً لنظام ERP) ---
+/*
+  X-Frame-Options: SAMEORIGIN
+  X-XSS-Protection: 1; mode=block
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# --- 2. منع تكييش ملفات النظام الحساسة ---
+
+# الـ Service Worker في المجلد الرئيسي
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# الـ Service Worker في المجلدات الفرعية
+/**/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# ملف إعدادات التطبيق (Manifest)
+/manifest.json
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# ملف النواة الأساسي
+/core.js
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# --- 3. منع تكييش واجهات المستخدم (HTML) ---
+
+# ملفات HTML في المجلد الرئيسي
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# ملفات HTML في المجلدات الفرعية (مثل المبيعات والمخازن)
+/**/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
