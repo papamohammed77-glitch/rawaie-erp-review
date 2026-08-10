@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>المالك | الروائع ERP</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#7c3aed">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="../core.js"></script>
+    <script>var supabase = window.supabase;</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#f3f4f6;-webkit-tap-highlight-color:transparent}
+        .card{background:#fff;border-radius:20px;padding:1.25rem;box-shadow:0 4px 15px rgba(0,0,0,0.05)}
+        .stat-card{background:#fff;border-radius:16px;padding:1rem;box-shadow:0 4px 6px rgba(0,0,0,0.02);transition:transform 0.2s;cursor:pointer}
+        .stat-card:active{transform:scale(0.98)}
+        .auth-container{background:linear-gradient(135deg,#4c1d95 0%,#7c3aed 40%,#a78bfa 100%)}
+        .input-field:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,0.1)}
+        .tab-active{background:#7c3aed;color:#fff}
+        .gold-text{color:#f59e0b}
+        .gold-bg{background:#f59e0b}
+        .chart-container{position:relative;width:100%;max-height:300px}
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<!-- ============================================================ -->
+<!-- شاشة الدخول -->
+<!-- ============================================================ -->
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center auth-container p-4">
+    <div class="bg-white rounded-[32px] shadow-2xl p-6 w-[92%] max-w-md">
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 bg-gradient-to-br from-purple-600 to-amber-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg mb-4">
+                <i class="fa-solid fa-crown text-white text-3xl"></i>
+            </div>
+            <h1 class="font-black text-2xl text-gray-800">الروائع</h1>
+            <p class="text-xs text-gray-400 font-bold mt-1 gold-text">المالك</p>
+        </div>
+        <h2 class="text-lg font-bold text-gray-700 text-center mb-4">تسجيل الدخول إلى حسابك</h2>
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1">البريد الإلكتروني <span class="text-red-500">*</span></label>
+                <input id="loginEmail" type="email" placeholder="example@domain.com" class="input-field w-full p-3 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-purple-600 focus:bg-white outline-none font-bold text-sm transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-600 mb-1">كلمة السر <span class="text-red-500">*</span></label>
+                <div class="relative">
+                    <input id="loginPass" type="password" placeholder="••••••••" class="input-field w-full p-3 bg-gray-50 rounded-xl border-2 border-gray-200 focus:border-purple-600 focus:bg-white outline-none font-bold text-sm transition-all pr-12">
+                    <button type="button" onclick="App.togglePass()" class="absolute left-2 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600">
+                        <i id="passIcon" class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="flex justify-between items-center text-sm">
+                <label class="flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" id="rememberMe" class="accent-purple-600 w-4 h-4"> 
+                    <span class="text-xs text-gray-600 font-bold">تذكرني</span>
+                </label>
+                <button onclick="App.forgotPassword()" class="text-purple-600 font-bold text-xs hover:underline">نسيت كلمة المرور؟</button>
+            </div>
+        </div>
+        <button onclick="App.doLogin()" class="w-full bg-gradient-to-r from-purple-600 to-amber-500 text-white py-3.5 rounded-xl font-black text-sm shadow-lg shadow-purple-200 hover:shadow-xl transition-all mt-4">
+            دخول المالك
+        </button>
+        <p id="loginMsg" class="text-center text-xs text-red-500 font-bold mt-3 hidden"></p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- التطبيق الرئيسي -->
+<!-- ============================================================ -->
+<div id="mainApp" class="hidden flex flex-col h-full">
+    <header class="bg-gradient-to-r from-purple-700 to-purple-800 text-white p-4 flex items-center justify-between sticky top-0 z-30 shadow-md flex-shrink-0">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-crown gold-text"></i>
+            <span class="font-black text-sm">المالك</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-bold" id="headerUserName"></span>
+            <button onclick="App.doLogout()" class="bg-white/10 w-8 h-8 rounded-full"><i class="fa-solid fa-arrow-right-from-bracket text-xs"></i></button>
+        </div>
+    </header>
+
+    <div class="flex gap-1 p-2 bg-white border-b overflow-x-auto flex-shrink-0">
+        <button onclick="App.switchTab('dashboard')" class="whitespace-nowrap px-4 py-2 rounded-xl font-bold text-sm tab-active" id="tab-dashboard">👑 لوحة التحكم</button>
+        <button onclick="App.switchTab('reports')" class="whitespace-nowrap px-4 py-2 rounded-xl font-bold text-sm text-gray-500" id="tab-reports">📊 التقارير</button>
+        <button onclick="App.switchTab('settings')" class="whitespace-nowrap px-4 py-2 rounded-xl font-bold text-sm text-gray-500" id="tab-settings">⚙️ الإعدادات</button>
+        <button onclick="App.switchTab('audit')" class="whitespace-nowrap px-4 py-2 rounded-xl font-bold text-sm text-gray-500" id="tab-audit">📋 التدقيق</button>
+    </div>
+
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+</div>
+
+<script>
+var App = {
+    currentUser: null,
+    currentTab: 'dashboard',
+    chartInstance: null,
+
+    togglePass: function() {
+        var passInput = RW_UI.byId('loginPass');
+        var icon = RW_UI.byId('passIcon');
+        if (passInput.type === 'password') {
+            passInput.type = 'text';
+            icon.className = 'fa-solid fa-eye-slash';
+        } else {
+            passInput.type = 'password';
+            icon.className = 'fa-solid fa-eye';
+        }
+    },
+
+    forgotPassword: function() {
+        var email = RW_UI.byId('loginEmail').value.trim();
+        if (!email) { RW_UI.toast('أدخل بريدك الإلكتروني أولاً', 'warning'); return; }
+        Swal.showLoading();
+        supabase.auth.resetPasswordForEmail(email).then(function(res) {
+            Swal.close();
+            if (res.error) RW_UI.toast(res.error.message, 'error');
+            else RW_UI.toast('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك', 'success');
+        }).catch(function() { Swal.close(); RW_UI.toast('فشل الاتصال بالخادم', 'error'); });
+    },
+
+    doLogin: function() {
+        var email = RW_UI.byId('loginEmail').value.trim();
+        var pass = RW_UI.byId('loginPass').value.trim();
+        if (!email || !pass) {
+            RW_UI.byId('loginMsg').innerText = 'أدخل البريد الإلكتروني وكلمة المرور';
+            RW_UI.byId('loginMsg').classList.remove('hidden');
+            return;
+        }
+        RW_UI.byId('loginMsg').classList.add('hidden');
+        var self = this;
+        RW_UI.showLoader('جاري تسجيل الدخول...');
+        RW_Auth.doLogin(email, pass, function(user, err) {
+            RW_UI.hideLoader();
+            if (err) { RW_UI.byId('loginMsg').innerText = err; RW_UI.byId('loginMsg').classList.remove('hidden'); }
+            else {
+                if (RW_UI.byId('rememberMe').checked) localStorage.setItem('remember_email', email);
+                else localStorage.removeItem('remember_email');
+                self.init();
+            }
+        });
+    },
+
+    init: function() {
+        var self = this;
+        var remembered = localStorage.getItem('remember_email');
+        if (remembered) { RW_UI.byId('loginEmail').value = remembered; RW_UI.byId('rememberMe').checked = true; }
+
+        RW_Auth.init(function(user, err) {
+            if (err || !user) { if (err === 'NO_SESSION') return; RW_UI.showError('فشل استعادة الجلسة'); return; }
+            var isOwner = user.isOwner;
+            if (!isOwner) { RW_UI.showError('غير مصرح'); RW_Auth.doLogout(); return; }
+            RW_UI.safeText(RW_UI.byId('headerUserName'), user.name);
+            self.currentUser = user;
+            self.enterApp();
+        });
+    },
+
+    enterApp: function() {
+        RW_UI.byId('loginScreen').classList.add('hidden');
+        RW_UI.byId('mainApp').classList.remove('hidden');
+        this.switchTab('dashboard');
+    },
+
+    doLogout: function() {
+        var self = this;
+        RW_Auth.doLogout(function() {
+            self.currentUser = null;
+            RW_UI.byId('mainApp').classList.add('hidden');
+            RW_UI.byId('loginScreen').classList.remove('hidden');
+            RW_UI.byId('loginEmail').value = '';
+            RW_UI.byId('loginPass').value = '';
+            RW_UI.byId('loginMsg').classList.add('hidden');
+        });
+    },
+
+    switchTab: function(tab) {
+        this.currentTab = tab;
+        var tabs = ['dashboard', 'reports', 'settings', 'audit'];
+        for (var i = 0; i < tabs.length; i++) {
+            var btn = RW_UI.byId('tab-' + tabs[i]);
+            if (btn) { btn.classList.remove('tab-active'); btn.classList.add('text-gray-500'); }
+        }
+        var activeBtn = RW_UI.byId('tab-' + tab);
+        if (activeBtn) { activeBtn.classList.add('tab-active'); activeBtn.classList.remove('text-gray-500'); }
+        if (tab === 'dashboard') this.renderDashboard();
+        else if (tab === 'reports') this.renderReports();
+        else if (tab === 'settings') this.renderSettings();
+        else if (tab === 'audit') this.renderAudit();
+    },
+
+    renderDashboard: function() {
+        var self = this;
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), '<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>');
+
+        Promise.all([
+            supabase.from('orders').select('id, total_amount, order_status, created_at').order('created_at', { ascending: false }).limit(50),
+            supabase.from('stock_branches').select('qty, cost_price'),
+            supabase.from('users').select('id'),
+            supabase.from('customers').select('id'),
+            supabase.from('runsheets').select('id').in('status', ['Picking','Loading','Delivering','Loaded'])
+        ]).then(function(results) {
+            var orders = results[0].data || [];
+            var stockData = results[1].data || [];
+            var totalUsers = results[2].data ? results[2].data.length : 0;
+            var totalCustomers = results[3].data ? results[3].data.length : 0;
+            var activeRunsheets = results[4].data ? results[4].data.length : 0;
+
+            var today = new Date().toISOString().split('T')[0];
+            var todaySales = 0;
+            var todayOrders = 0;
+            var monthlySales = 0;
+            var currentMonth = new Date().getMonth();
+            var currentYear = new Date().getFullYear();
+
+            for (var i = 0; i < orders.length; i++) {
+                var o = orders[i];
+                var orderDate = o.created_at ? o.created_at.split('T')[0] : '';
+                var orderMonth = new Date(o.created_at).getMonth();
+                var orderYear = new Date(o.created_at).getFullYear();
+                
+                if (o.order_status === 'Delivered' || o.order_status === 'Invoiced') {
+                    if (orderDate === today) {
+                        todaySales += Number(o.total_amount) || 0;
+                        todayOrders++;
+                    }
+                    if (orderMonth === currentMonth && orderYear === currentYear) {
+                        monthlySales += Number(o.total_amount) || 0;
+                    }
+                }
+            }
+
+            var totalStockValue = 0;
+            for (var j = 0; j < stockData.length; j++) {
+                totalStockValue += (Number(stockData[j].qty) || 0) * (Number(stockData[j].cost_price) || 0);
+            }
+
+            var html = '<h2 class="text-lg font-black mb-2">👑 لوحة تحكم المالك</h2>';
+            html += '<p class="text-sm text-gray-500 mb-4">نظرة شاملة على أداء الشركة</p>';
+
+            html += '<div class="grid grid-cols-2 gap-3 mb-4">';
+            html += '<div class="stat-card"><div class="text-3xl mb-1">💰</div><div class="text-xl font-black">' + fmtNum(todaySales) + '</div><div class="text-xs text-gray-500">مبيعات اليوم</div></div>';
+            html += '<div class="stat-card"><div class="text-3xl mb-1">📦</div><div class="text-xl font-black">' + todayOrders + '</div><div class="text-xs text-gray-500">أوردرات اليوم</div></div>';
+            html += '<div class="stat-card"><div class="text-3xl mb-1">📅</div><div class="text-xl font-black">' + fmtNum(monthlySales) + '</div><div class="text-xs text-gray-500">مبيعات الشهر</div></div>';
+            html += '<div class="stat-card"><div class="text-3xl mb-1">🏪</div><div class="text-xl font-black">' + fmtNum(totalStockValue) + '</div><div class="text-xs text-gray-500">قيمة المخزون</div></div>';
+            html += '<div class="stat-card"><div class="text-3xl mb-1">👥</div><div class="text-xl font-black">' + totalUsers + '</div><div class="text-xs text-gray-500">مستخدم</div></div>';
+            html += '<div class="stat-card"><div class="text-3xl mb-1">🤝</div><div class="text-xl font-black">' + totalCustomers + '</div><div class="text-xs text-gray-500">عميل</div></div>';
+            html += '</div>';
+
+            html += '<div class="card mb-4"><h3 class="font-bold mb-3">📈 ملخص المبيعات</h3><div class="chart-container"><canvas id="salesChart"></canvas></div></div>';
+
+            html += '<div class="grid grid-cols-2 gap-3">';
+            html += '<button onclick="window.open(\'/companies/company-1/index.html\', \'_blank\')" class="stat-card text-center"><div class="text-2xl mb-1">🏢</div><div class="text-sm font-bold">النظام الأم</div></button>';
+            html += '<button onclick="App.switchTab(\'reports\')" class="stat-card text-center"><div class="text-2xl mb-1">📊</div><div class="text-sm font-bold">التقارير</div></button>';
+            html += '<button onclick="App.switchTab(\'settings\')" class="stat-card text-center"><div class="text-2xl mb-1">⚙️</div><div class="text-sm font-bold">الإعدادات</div></button>';
+            html += '<button onclick="App.switchTab(\'audit\')" class="stat-card text-center"><div class="text-2xl mb-1">📋</div><div class="text-sm font-bold">التدقيق</div></button>';
+            html += '</div>';
+
+            RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+
+            setTimeout(function() { self.renderSalesChart(); }, 300);
+        }).catch(function() {
+            RW_UI.safeHTML(RW_UI.byId('mainContent'), '<div class="text-center py-10 text-red-500">فشل تحميل البيانات</div>');
+        });
+    },
+
+    renderSalesChart: function() {
+        var ctx = document.getElementById('salesChart');
+        if (!ctx) return;
+        if (this.chartInstance) this.chartInstance.destroy();
+        this.chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+                datasets: [{
+                    label: 'المبيعات',
+                    data: [15000, 22000, 18000, 25000, 30000, 28000, 12000],
+                    backgroundColor: ['#7c3aed', '#7c3aed', '#7c3aed', '#7c3aed', '#f59e0b', '#7c3aed', '#7c3aed'],
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { font: { family: 'Cairo', size: 9 } } },
+                    x: { ticks: { font: { family: 'Cairo', size: 9 } } }
+                }
+            }
+        });
+    },
+
+    renderReports: function() {
+        var html = '<h2 class="text-lg font-black mb-4">📊 التقارير المالية والإدارية</h2>';
+        html += '<p class="text-sm text-gray-500 mb-4">اضغط على أي تقرير لفتحه في النظام الأم</p>';
+
+        var reports = [
+            { title: 'ميزان المراجعة', icon: '⚖️', desc: 'أرصدة جميع الحسابات' },
+            { title: 'قائمة الدخل', icon: '📈', desc: 'الأرباح والخسائر' },
+            { title: 'الميزانية العمومية', icon: '🏦', desc: 'الأصول والخصوم' },
+            { title: 'التدفقات النقدية', icon: '💵', desc: 'حركة النقد' },
+            { title: 'تقارير المبيعات', icon: '🛒', desc: 'تحليل المبيعات' },
+            { title: 'تقارير المخازن', icon: '📦', desc: 'حركة المخزون' },
+            { title: 'تقارير العملاء', icon: '👥', desc: 'مديونيات ومتابعات' },
+            { title: 'تقارير المشتريات', icon: '📋', desc: 'أوامر الشراء' }
+        ];
+
+        for (var i = 0; i < reports.length; i++) {
+            html += '<div class="card mb-3 cursor-pointer hover:shadow-lg transition-all" onclick="window.open(\'/companies/company-1/index.html\', \'_blank\')"><div class="flex items-center gap-3"><div class="text-2xl">' + reports[i].icon + '</div><div><div class="font-bold">' + reports[i].title + '</div><div class="text-xs text-gray-500">' + reports[i].desc + '</div></div></div></div>';
+        }
+
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+    },
+
+    renderSettings: function() {
+        var self = this;
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), '<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>');
+
+        supabase.from('app_settings').select('*').limit(1).single().then(function(res) {
+            var settings = res.data || {};
+            var html = '<h2 class="text-lg font-black mb-4">⚙️ إعدادات الشركة</h2>';
+            html += '<div class="card mb-4"><h3 class="font-bold mb-3">معلومات الشركة</h3>';
+            html += '<div class="space-y-3">';
+            html += '<div><label class="text-xs font-bold text-gray-600">اسم الشركة</label><div class="font-bold">' + (settings.company_name || 'الروائع') + '</div></div>';
+            html += '<div><label class="text-xs font-bold text-gray-600">العملة</label><div class="font-bold">' + (settings.currency || 'SAR') + '</div></div>';
+            html += '<div><label class="text-xs font-bold text-gray-600">نسبة الضريبة</label><div class="font-bold">' + (settings.tax_rate || '15') + '%</div></div>';
+            html += '<div><label class="text-xs font-bold text-gray-600">رسوم التوصيل</label><div class="font-bold">' + (settings.delivery_fee || '0') + '</div></div>';
+            html += '</div></div>';
+
+            html += '<div class="card mb-4"><h3 class="font-bold mb-3">حالة الترخيص</h3>';
+            html += '<div class="text-center"><div class="text-4xl mb-2">✅</div><div class="text-green-600 font-bold">الترخيص نشط</div><div class="text-xs text-gray-500 mt-1">شركة واحدة – Single Tenant</div></div></div>';
+
+            html += '<button onclick="window.open(\'/companies/company-1/index.html\', \'_blank\')" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm mt-2">فتح النظام الأم للإعدادات المتقدمة</button>';
+
+            RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+        }).catch(function() {
+            RW_UI.safeHTML(RW_UI.byId('mainContent'), '<div class="text-center py-10 text-red-500">فشل تحميل الإعدادات</div>');
+        });
+    },
+
+    renderAudit: function() {
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), '<div class="text-center py-10 text-gray-400"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>');
+
+        supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(30).then(function(res) {
+            var logs = res.data || [];
+            var html = '<h2 class="text-lg font-black mb-4">📋 سجل التدقيق</h2>';
+            html += '<p class="text-sm text-gray-500 mb-4">آخر 30 حدثاً في النظام</p>';
+
+            if (!logs.length) {
+                html += '<div class="card text-center text-gray-500">لا توجد أحداث مسجلة</div>';
+            } else {
+                for (var i = 0; i < logs.length; i++) {
+                    var log = logs[i];
+                    var time = log.created_at ? new Date(log.created_at).toLocaleString('ar-EG') : '';
+                    html += '<div class="card mb-2"><div class="flex justify-between items-start"><div><span class="font-bold text-sm">' + (log.action || 'حدث') + '</span><br><span class="text-xs text-gray-400">' + (log.user_email || '') + '</span></div><span class="text-xs text-gray-400">' + time + '</span></div></div>';
+                }
+            }
+
+            html += '<button onclick="window.open(\'/companies/company-1/index.html\', \'_blank\')" class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold text-sm mt-4">فتح النظام الأم للتدقيق المتقدم</button>';
+
+            RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+        }).catch(function() {
+            RW_UI.safeHTML(RW_UI.byId('mainContent'), '<div class="text-center py-10 text-red-500">فشل تحميل سجل التدقيق</div>');
+        });
+    }
+};
+
+RW_SW.register('../sw.js');
+document.addEventListener('DOMContentLoaded', function() { App.init(); });
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
