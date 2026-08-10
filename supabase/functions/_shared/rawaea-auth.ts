@@ -14,6 +14,24 @@ export async function requireUser(req: Request) {
   return data.user
 }
 
+export async function requireWarehouseVoucherAccess(req: Request) {
+  const authUser = await requireUser(req)
+  const meta = authUser.user_metadata || {}
+  const isOwner = meta.isOwner === true || meta.isOwner === "true" || meta.role === "owner" || meta.role === "مالك"
+  if (isOwner) return authUser
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("active_warehouse_role")
+    .eq("email", authUser.email || "")
+    .maybeSingle()
+
+  if (error || !data) throw new Error("تعذر التحقق من صلاحية الأذونات المخزنية")
+  if (data.active_warehouse_role !== "أذونات") throw new Error("ليس لديك صلاحية تنفيذ دورة الأذونات المخزنية")
+
+  return authUser
+}
+
 export async function getCompanyContext() {
   const { data, error } = await supabase
     .from("app_settings")
