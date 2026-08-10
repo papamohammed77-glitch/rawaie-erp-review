@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>الأذونات المخزنية | الروائع ERP</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3/dist/dexie.min.js"></script>
+    <script src="../core.js"></script>
+    <script>var supabase = window.supabase;</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#f8fafc;-webkit-tap-highlight-color:transparent}
+        .auth-bg{background:linear-gradient(135deg,#3730a3 0%,#4f46e5 40%,#6366f1 100%)}
+        .card{background:#fff;border-radius:24px;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 24px rgba(0,0,0,0.03);transition:all 0.2s ease}
+        .card:active{transform:scale(0.985)}
+        .btn-primary{background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;padding:1rem 1.5rem;border-radius:16px;font-weight:700;border:none;cursor:pointer;width:100%;box-shadow:0 4px 12px rgba(99,102,241,0.25)}
+        .btn-primary:active{transform:scale(0.97)}
+        .btn-secondary{background:#f1f5f9;color:#1e293b;padding:0.75rem 1.25rem;border-radius:14px;font-weight:700;border:none;cursor:pointer;transition:all 0.15s ease}
+        .btn-danger{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;padding:0.75rem 1.25rem;border-radius:14px;font-weight:700;border:none;cursor:pointer;transition:all 0.15s ease;box-shadow:0 4px 12px rgba(220,38,38,0.2)}
+        .tab-btn{transition:all 0.2s ease}
+        .tab-btn.active{border-bottom-color:#6366f1;color:#0f172a}
+        .slide-in{animation:slideIn 0.3s ease}
+        @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .skeleton{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center auth-bg p-4">
+    <div class="bg-white rounded-[36px] shadow-2xl p-6 w-[92%] max-w-md slide-in">
+        <div class="text-center mb-6"><div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-indigo-200 mb-5"><i class="fa-solid fa-file-signature text-white text-3xl"></i></div><h1 class="font-black text-2xl text-slate-800">الروائع</h1><p class="text-sm text-slate-400">الأذونات المخزنية</p></div>
+        <div class="space-y-4"><div><input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none font-semibold text-sm"></div><div class="relative"><input id="loginPass" type="password" placeholder="كلمة السر" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 outline-none font-semibold text-sm pr-12"><button type="button" onclick="App.togglePass()" class="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-slate-300"><i id="passIcon" class="fa-solid fa-eye"></i></button></div></div>
+        <button onclick="App.doLogin()" class="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 text-white py-4 rounded-2xl font-bold text-base shadow-lg mt-6">تسجيل الدخول</button>
+        <p id="loginMsg" class="text-center text-xs text-red-500 font-bold mt-4 hidden"></p>
+    </div>
+</div>
+
+<div id="mainApp" class="hidden flex flex-col h-full">
+    <header class="bg-gradient-to-r from-indigo-700 to-indigo-600 text-white p-4 flex items-center justify-between sticky top-0 z-30 shadow-md flex-shrink-0">
+        <span class="font-black text-base">📄 الأذونات المخزنية</span>
+        <div class="flex items-center gap-2">
+            <span id="connDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span id="connLabel" class="text-xs font-bold">متصل</span>
+            <button onclick="App.doLogout()" class="bg-white/15 w-9 h-9 rounded-full"><i class="fa-solid fa-arrow-right-from-bracket text-xs"></i></button>
+        </div>
+    </header>
+
+    <div class="flex gap-1.5 p-2 bg-white border-b border-slate-100 overflow-x-auto flex-shrink-0">
+        <button onclick="App.switchTab('pending')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm active" id="tab-pending">📄 معلقة</button>
+        <button onclick="App.switchTab('completed')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-completed">✅ مكتملة</button>
+        <button onclick="App.switchTab('account')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-account">⚙️ حسابي</button>
+    </div>
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+</div>
+
+<script>
+var App = {
+    currentUser: null, currentTab: 'pending', vouchers: [], newVoucherCart: [],
+
+    togglePass: function(){var p=RW_UI.byId('loginPass'),i=RW_UI.byId('passIcon');if(p.type==='password'){p.type='text';i.className='fa-solid fa-eye-slash'}else{p.type='password';i.className='fa-solid fa-eye'}},
+    doLogin: function(){var e=RW_UI.byId('loginEmail').value.trim(),p=RW_UI.byId('loginPass').value.trim();if(!e||!p){RW_UI.byId('loginMsg').innerText='أدخل البيانات';RW_UI.byId('loginMsg').classList.remove('hidden');return}RW_UI.byId('loginMsg').classList.add('hidden');RW_UI.showLoader();RW_Auth.doLogin(e,p,function(u,er){RW_UI.hideLoader();if(er){RW_UI.byId('loginMsg').innerText=er;RW_UI.byId('loginMsg').classList.remove('hidden')}else App.init()})},
+    init: function(){var s=this;RW_Auth.init(function(u,er){if(er||!u){RW_UI.showError('انتهت الجلسة',function(){location.reload()});return}s.currentUser=u;if(!u.isOwner&&u.activeWarehouseRole!=='أذونات'){RW_UI.showError('دورك النشط هو "'+(u.activeWarehouseRole||'غير محدد')+'"',function(){RW_Auth.doLogout()});return}RW_UI.safeText(RW_UI.byId('headerUserName'),u.name);s.enterApp()})},
+    enterApp: function(){RW_UI.byId('loginScreen').classList.add('hidden');RW_UI.byId('mainApp').classList.remove('hidden');RW_UI.updateConnectionStatus('connDot','connLabel');window.addEventListener('online',function(){RW_UI.updateConnectionStatus('connDot','connLabel')});window.addEventListener('offline',function(){RW_UI.updateConnectionStatus('connDot','connLabel')});this.switchTab('pending')},
+    doLogout: function(){RW_Auth.doLogout(function(){RW_UI.byId('mainApp').classList.add('hidden');RW_UI.byId('loginScreen').classList.remove('hidden')})},
+
+    switchTab: function(tab){
+        this.currentTab = tab;
+        var tabs = ['pending', 'completed', 'account'];
+        for(var i=0;i<tabs.length;i++){ var btn=RW_UI.byId('tab-'+tabs[i]); if(btn){btn.classList.remove('active');btn.classList.add('text-slate-400')} }
+        var act=RW_UI.byId('tab-'+tab); if(act){act.classList.add('active');act.classList.remove('text-slate-400')}
+        if(tab==='pending') this.loadVouchers('pending');
+        else if(tab==='completed') this.loadVouchers('completed');
+        else if(tab==='account') this.renderAccount();
+    },
+
+    loadVouchers: function(scope){
+        var self = this;
+        RW_UI.showSkeleton('mainContent', 3, 'card');
+        var query = supabase.from('stock_vouchers').select('*').order('voucher_date',{ascending:false}).limit(50);
+        if(scope==='pending') query = query.in('status',['Draft','Sent']);
+        else query = query.in('status',['Received','Completed']);
+        query.then(function(r){
+            self.vouchers = r.data || [];
+            if(scope==='pending') self._renderList('pending');
+            else self._renderList('completed');
+        }).catch(function(){ RW_UI.showEmptyState('mainContent','فشل تحميل الأذونات','📡') });
+    },
+
+    _renderList: function(scope){
+        var self = this, h='', title='', showActions=false;
+        if(scope==='pending'){ title='📄 أذونات معلقة'; showActions=true }
+        else { title='✅ أذونات مكتملة' }
+        h += '<div class="mb-4 flex justify-between items-center"><p class="text-slate-400 text-sm">أهلاً، <span class="font-bold text-slate-700">'+(this.currentUser.name||'زميل')+'</span> 👋</p>';
+        if(showActions) h += '<button onclick="App.openNewVoucherModal()" class="bg-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-sm"><i class="fa-solid fa-plus ml-1"></i> إذن جديد</button>';
+        h += '</div>';
+        h += '<input type="text" id="voucherSearch" placeholder="🔍 بحث..." class="w-full p-3 bg-white rounded-2xl border-2 border-slate-100 focus:border-indigo-400 outline-none font-semibold text-sm shadow-sm mb-4" oninput="App._filterAndRender()">';
+        h += '<h2 class="text-lg font-black mb-4">'+title+'</h2>';
+        var manual = self.vouchers.filter(function(v){ return (v.source==='Manual'||v.type==='Adjustment') });
+        h += self._buildCardsHTML(manual, showActions);
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), h);
+    },
+
+    _filterAndRender: function(){
+        var q = (RW_UI.byId('voucherSearch') ? RW_UI.byId('voucherSearch').value : '').toLowerCase();
+        var manual = this.vouchers.filter(function(v){ return ((v.voucher_code||'').toLowerCase().indexOf(q)!==-1 || (v.type||'').toLowerCase().indexOf(q)!==-1) && (v.source==='Manual'||v.type==='Adjustment') });
+        var showActions = (this.currentTab==='pending');
+        var cardsHTML = this._buildCardsHTML(manual, showActions);
+        var container = RW_UI.byId('voucherCardsContainer');
+        if(container) RW_UI.safeHTML(container, cardsHTML);
+    },
+
+    _buildCardsHTML: function(data, showActions){
+        if(data.length===0) return '<div id="voucherCardsContainer" class="text-center py-12"><div class="text-6xl mb-4">☕</div><p class="text-slate-400 font-bold">لا توجد أذونات.</p></div>';
+        var h = '<div id="voucherCardsContainer">';
+        for(var i=0;i<data.length;i++){
+            var v = data[i];
+            var sc = v.status==='Draft'?'bg-amber-100 text-amber-700':(v.status==='Sent'?'bg-blue-100 text-blue-700':'bg-green-100 text-green-700');
+            var sl = v.status==='Draft'?'مسودة':(v.status==='Sent'?'مُرسل':v.status);
+            h += '<div class="card mb-3 cursor-pointer slide-in" onclick="App.viewVoucherDetails(\''+v.voucher_code+'\')"><div class="flex justify-between items-center"><div><span class="font-black">'+v.voucher_code+'</span><p class="text-xs text-slate-400">'+v.voucher_date+' | '+v.type+'</p></div><div class="flex items-center gap-2"><span class="px-2 py-0.5 rounded-full text-xs font-bold '+sc+'">'+sl+'</span>';
+            if(showActions){
+                if(v.status==='Draft') h += '<button onclick="event.stopPropagation();App.sendVoucher(\''+v.voucher_code+'\')" class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold">إرسال</button>';
+                else if(v.status==='Sent') h += '<button onclick="event.stopPropagation();App.receiveVoucher(\''+v.voucher_code+'\')" class="bg-emerald-600 text-white px-3 py-1 rounded-lg text-xs font-bold">استلام</button>';
+            }
+            h += '</div></div></div>';
+        }
+        h += '</div>';
+        return h;
+    },
+
+    sendVoucher: function(code){ var s=this; RW_UI.showConfirm('إرسال '+code+'؟',function(){RW_UI.showLoader();RW_API.call('send-stock-voucher',{voucher_code:code},function(j){RW_UI.hideLoader();if(j.success){RW_UI.toast('تم','success');s.loadVouchers('pending')}else RW_UI.showError(j.msg)})})},
+    receiveVoucher: function(code){ var s=this; RW_UI.showConfirm('استلام '+code+'؟',function(){RW_UI.showLoader();RW_API.call('receive-stock-voucher',{voucher_code:code,receivedItems:[]},function(j){RW_UI.hideLoader();if(j.success){RW_UI.toast('تم','success');s.loadVouchers('pending')}else RW_UI.showError(j.msg)})})},
+
+    viewVoucherDetails: function(code){
+        RW_UI.showLoader();
+        supabase.from('stock_voucher_details').select('*').eq('voucher_code',code).then(function(r){
+            RW_UI.hideLoader(); var its=r.data||[];
+            var h='<div class="text-right"><h3 class="font-black text-lg mb-4">'+code+'</h3>';
+            if(!its.length)h+='<p class="text-slate-400 text-center py-4">لا توجد أصناف</p>';
+            else { h+='<table class="w-full text-sm border"><thead class="bg-slate-100"><tr><th class="p-2">الصنف</th><th class="p-2 text-center">الكمية</th><th class="p-2 text-center">المستلمة</th></tr></thead><tbody>';
+                for(var i=0;i<its.length;i++) h+='<tr class="border-t"><td class="p-2 font-semibold">'+(its[i].item_name||its[i].item_code)+'</td><td class="p-2 text-center">'+(its[i].qty||0)+'</td><td class="p-2 text-center">'+(its[i].received_qty||0)+'</td></tr>';
+                h+='</tbody></table>'; }
+            h+='</div>';
+            Swal.fire({title:'تفاصيل الإذن',html:h,width:'600px',showCloseButton:true,showConfirmButton:false,customClass:{popup:'!rounded-3xl'}});
+        });
+    },
+
+    openNewVoucherModal: function(){
+        var self = this; self.newVoucherCart = [];
+        var h = '<div class="text-right"><div class="mb-3"><label class="text-xs font-bold">نوع الإذن</label><select id="newVoucherType" class="w-full p-2.5 border rounded-xl text-sm"><option value="Transfer">تحويل داخلي</option><option value="DirectSale">صرف مباشر</option><option value="DirectReturn">مرتجع مباشر</option><option value="SupplierReturn">مرتجع لمورد</option></select></div><div class="mb-3"><label class="text-xs font-bold">ملاحظات</label><input id="newVoucherNotes" class="w-full p-2.5 border rounded-xl text-sm"></div><div class="mb-3"><label class="text-xs font-bold">بحث عن صنف</label><input type="text" id="newVoucherItemSearch" placeholder="ابحث..." class="w-full p-2.5 border rounded-xl text-sm" oninput="App.searchVoucherItem(this.value)"><div id="newVoucherItemResults" class="max-h-48 overflow-y-auto border rounded-xl mt-1"></div></div><div class="mb-3"><h4 class="font-bold text-sm mb-1">الأصناف المضافة</h4><div id="newVoucherCart"><p class="text-slate-400 text-center py-2">لا توجد أصناف</p></div></div></div>';
+        Swal.fire({title:'إذن جديد',html:h,width:'600px',showCancelButton:true,confirmButtonText:'حفظ',cancelButtonText:'إلغاء',customClass:{popup:'!rounded-3xl'},preConfirm:function(){
+            var popup = Swal.getPopup();
+            var typeEl = popup ? popup.querySelector('#newVoucherType') : null;
+            var notesEl = popup ? popup.querySelector('#newVoucherNotes') : null;
+            var type = typeEl ? typeEl.value : '';
+            var notes = notesEl ? notesEl.value : '';
+            if(!type){ Swal.showValidationMessage('اختر النوع'); return false }
+            if(self.newVoucherCart.length===0){ Swal.showValidationMessage('أضف صنفاً'); return false }
+            return {type:type, notes:notes};
+        }}).then(function(r){
+            if(!r.isConfirmed) return;
+            var its = [];
+            for(var i=0;i<self.newVoucherCart.length;i++) its.push({itemCode:self.newVoucherCart[i].code, qty:self.newVoucherCart[i].qty, unitPrice:0, notes:''});
+            RW_UI.showLoader();
+            RW_API.call('create-stock-voucher', {type:r.value.type, reference:'', fromType:'Branch', fromId:'MAIN', toType:'Branch', toId:'', items:its, notes:r.value.notes}, function(j){
+                RW_UI.hideLoader();
+                if(j.success){ RW_UI.toast('تم '+j.voucherId,'success'); self.loadVouchers('pending') }
+                else RW_UI.showError(j.msg||'فشل');
+            });
+        });
+    },
+
+    searchVoucherItem: function(q){
+        if(!q||!q.trim()){ var popup = Swal.getPopup(); if(popup){ var resDiv = popup.querySelector('#newVoucherItemResults'); if(resDiv) resDiv.innerHTML = '' } return }
+        supabase.from('items').select('item_code,name,unit').or('name.ilike.%'+q+'%,item_code.ilike.%'+q+'%').limit(8).then(function(r){
+            var items = r.data||[], h='';
+            for(var i=0;i<items.length;i++) h += '<div onclick="App.addToNewVoucherCart(\''+items[i].item_code+'\',\''+(items[i].name||'').replace(/'/g,"\\'")+'\',\''+(items[i].unit||'حبة')+'\')" class="p-2 border-b hover:bg-indigo-50 cursor-pointer font-bold text-sm">'+items[i].name+' ('+items[i].item_code+')</div>';
+            var popup = Swal.getPopup();
+            if(popup){ var resDiv = popup.querySelector('#newVoucherItemResults'); if(resDiv) resDiv.innerHTML = h||'<p class="p-2 text-slate-400">لا توجد نتائج</p>' }
+        });
+    },
+
+    addToNewVoucherCart: function(code,name,unit){
+        var exist=null; for(var i=0;i<this.newVoucherCart.length;i++){ if(this.newVoucherCart[i].code===code){ exist=this.newVoucherCart[i]; break } }
+        if(exist) exist.qty++; else this.newVoucherCart.push({code:code,name:name,unit:unit,qty:1});
+        this.renderNewVoucherCart();
+    },
+
+    renderNewVoucherCart: function(){
+        var popup = Swal.getPopup(); if(!popup) return;
+        var cartDiv = popup.querySelector('#newVoucherCart'); if(!cartDiv) return;
+        if(this.newVoucherCart.length===0){ cartDiv.innerHTML = '<p class="text-slate-400 text-center py-2">لا توجد أصناف</p>'; return }
+        var h = '';
+        for(var i=0;i<this.newVoucherCart.length;i++){
+            var it = this.newVoucherCart[i];
+            h += '<div class="flex justify-between items-center p-2 border-b"><span class="font-bold text-sm">'+it.name+'</span><div class="flex items-center gap-2"><button onclick="App.changeNewCartQty('+i+',-1)" class="w-6 h-6 bg-slate-100 rounded-full text-xs">-</button><span class="w-6 text-center font-bold">'+it.qty+'</span><button onclick="App.changeNewCartQty('+i+',1)" class="w-6 h-6 bg-indigo-600 text-white rounded-full text-xs">+</button></div></div>';
+        }
+        cartDiv.innerHTML = h;
+    },
+
+    changeNewCartQty: function(idx, delta){
+        this.newVoucherCart[idx].qty += delta;
+        if(this.newVoucherCart[idx].qty <= 0) this.newVoucherCart.splice(idx,1);
+        this.renderNewVoucherCart();
+    },
+
+    renderAccount: function(){
+        var h = '<div class="text-center mb-8 mt-4"><div class="w-20 h-20 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl font-black shadow-lg mb-4">'+(this.currentUser.name||'?').charAt(0)+'</div><h2 class="font-black text-xl">'+(this.currentUser.name||this.currentUser.email)+'</h2><p class="text-sm text-slate-400">أذونات مخزنية</p></div><div class="card mb-3"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-envelope"></i></div><div><p class="text-xs text-slate-400">البريد</p><p class="font-bold text-sm">'+this.currentUser.email+'</p></div></div></div><button onclick="App.doLogout()" class="w-full bg-white border-2 border-red-100 text-red-500 py-4 rounded-2xl font-bold mt-6"><i class="fa-solid fa-arrow-right-from-bracket ml-2"></i> تسجيل الخروج</button>';
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), h);
+    }
+};
+
+RW_SW.register('../sw.js');
+document.addEventListener('DOMContentLoaded',function(){App.init()});
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
