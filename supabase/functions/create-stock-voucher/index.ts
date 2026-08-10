@@ -1,4 +1,5 @@
 import { requireUser, getCompanyContext, supabase, json } from "../_shared/rawaea-auth.ts"
+import { validateVoucherEndpoints } from "../_shared/manual-voucher-rules.ts"
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json(req, "ok")
@@ -11,6 +12,14 @@ Deno.serve(async (req) => {
 
     const items = Array.isArray(body.items) ? body.items : []
     if (!body.type || items.length === 0) throw new Error("النوع والأصناف مطلوبة")
+
+    validateVoucherEndpoints({
+      type: body.type,
+      from_type: body.fromType || "Branch",
+      from_id: body.fromId || null,
+      to_type: body.toType || "Branch",
+      to_id: body.toId || null,
+    })
 
     const { data, error } = await supabase.rpc("create_manual_stock_voucher_atomic", {
       p_company_id: companyId,
