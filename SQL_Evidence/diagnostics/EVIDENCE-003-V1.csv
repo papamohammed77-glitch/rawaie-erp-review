@@ -1,0 +1,13 @@
+schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+public,app_settings,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,app_settings,Owner can do everything on app_settings,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,branches,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,branches,Owner can do everything on branches,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,inventory_log,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,items,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,items,Owner can do everything on items,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,stock_branches,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,stock_branches,Owner can do everything on stock_branches,PERMISSIVE,{public},ALL,(((auth.jwt() -> 'user_metadata'::text) ->> 'isOwner'::text) = 'true'::text),null
+public,stock_branches,stock_branches_access,PERMISSIVE,{public},ALL,(auth.role() = 'authenticated'::text),null
+public,stock_voucher_details,Allow all for all,PERMISSIVE,{public},ALL,true,true
+public,stock_vouchers,Allow all for all,PERMISSIVE,{public},ALL,true,true

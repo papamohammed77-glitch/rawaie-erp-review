@@ -1,0 +1,20 @@
+schemaname,tablename,indexname,indexdef
+public,branches,branches_company_id_branch_code_key,"CREATE UNIQUE INDEX branches_company_id_branch_code_key ON public.branches USING btree (company_id, branch_code)"
+public,branches,branches_pkey,CREATE UNIQUE INDEX branches_pkey ON public.branches USING btree (id)
+public,branches,idx_branches_company,CREATE INDEX idx_branches_company ON public.branches USING btree (company_id)
+public,inventory_log,idx_inventory_log_item,CREATE INDEX idx_inventory_log_item ON public.inventory_log USING btree (item_id)
+public,inventory_log,inventory_log_pkey,CREATE UNIQUE INDEX inventory_log_pkey ON public.inventory_log USING btree (id)
+public,items,idx_items_code,CREATE INDEX idx_items_code ON public.items USING btree (item_code)
+public,items,idx_items_company,CREATE INDEX idx_items_company ON public.items USING btree (company_id)
+public,items,idx_items_daily_deal,CREATE INDEX idx_items_daily_deal ON public.items USING btree (is_daily_deal) WHERE (is_daily_deal = true)
+public,items,idx_items_discount_active,"CREATE INDEX idx_items_discount_active ON public.items USING btree (discount_percent, discount_start, discount_end) WHERE (discount_percent > (0)::numeric)"
+public,items,idx_items_search,CREATE INDEX idx_items_search ON public.items USING btree (search_label)
+public,items,items_company_id_item_code_key,"CREATE UNIQUE INDEX items_company_id_item_code_key ON public.items USING btree (company_id, item_code)"
+public,items,items_pkey,CREATE UNIQUE INDEX items_pkey ON public.items USING btree (id)
+public,stock_branches,idx_stock_branches_branch,CREATE INDEX idx_stock_branches_branch ON public.stock_branches USING btree (branch_id)
+public,stock_branches,idx_stock_branches_item,CREATE INDEX idx_stock_branches_item ON public.stock_branches USING btree (item_id)
+public,stock_branches,stock_branches_branch_id_item_id_key,"CREATE UNIQUE INDEX stock_branches_branch_id_item_id_key ON public.stock_branches USING btree (branch_id, item_id)"
+public,stock_branches,stock_branches_pkey,CREATE UNIQUE INDEX stock_branches_pkey ON public.stock_branches USING btree (id)
+public,stock_voucher_details,stock_voucher_details_pkey,CREATE UNIQUE INDEX stock_voucher_details_pkey ON public.stock_voucher_details USING btree (id)
+public,stock_vouchers,stock_vouchers_company_id_voucher_code_key,"CREATE UNIQUE INDEX stock_vouchers_company_id_voucher_code_key ON public.stock_vouchers USING btree (company_id, voucher_code)"
+public,stock_vouchers,stock_vouchers_pkey,CREATE UNIQUE INDEX stock_vouchers_pkey ON public.stock_vouchers USING btree (id)
