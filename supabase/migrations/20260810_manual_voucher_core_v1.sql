@@ -1,6 +1,8 @@
 -- RAWAEA Inventory Rescue — Manual Stock Voucher Core V1
 -- NOT approved for production execution until owner validation.
 -- Existing send_stock_voucher_atomic remains untouched.
+-- Business-rule planning remains in the Edge/domain layer.
+-- Database functions below provide the atomic state/mutation boundary.
 
 create or replace function public.create_manual_stock_voucher_atomic(
   p_company_id uuid, p_type text, p_reference text,
@@ -11,10 +13,13 @@ returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   v_voucher_id uuid; v_voucher_code text; v_item jsonb; v_item_id uuid;
   v_count integer; v_last_num bigint;
+  v_settings_company uuid;
 begin
-  if p_type not in ('Transfer','DirectSale','DirectReturn','SupplierReturn') then
-    raise exception 'نوع الإذن غير مدعوم في دورة الأذونات الحالية';
+  select company_id into v_settings_company from app_settings limit 1;
+  if v_settings_company is null or v_settings_company <> p_company_id then
+    raise exception 'سياق الشركة غير متسق مع إعدادات النظام';
   end if;
+
   if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items)=0 then
     raise exception 'يجب إضافة صنف واحد على الأقل';
   end if;
@@ -64,7 +69,13 @@ declare
   v_voucher stock_vouchers%rowtype; v_effect record; v_stock stock_branches%rowtype; v_detail record;
   v_direction text; v_branch_id uuid; v_item_id uuid; v_qty numeric; v_available numeric;
   v_log_code text; v_expected_status text; v_new_status text; v_valid boolean;
+  v_settings_company uuid;
 begin
+  select company_id into v_settings_company from app_settings limit 1;
+  if v_settings_company is null or v_settings_company <> p_company_id then
+    raise exception 'سياق الشركة غير متسق مع إعدادات النظام';
+  end if;
+
   if p_operation not in ('SEND','RECEIVE') then raise exception 'عملية مخزنية غير مدعومة'; end if;
   if p_effects is null or jsonb_typeof(p_effects)<>'array' or jsonb_array_length(p_effects)=0 then raise exception 'لا توجد حركات مخزنية للتنفيذ'; end if;
 
@@ -84,8 +95,8 @@ begin
     if v_direction not in ('OUT','IN') then raise exception 'اتجاه حركة غير صالح'; end if;
     if v_branch_id is null or v_item_id is null or v_qty is null or v_qty<=0 then raise exception 'بيانات حركة مخزنية غير صالحة'; end if;
 
-    select exists(select 1 from branches where id=v_branch_id) into v_valid;
-    if not v_valid then raise exception 'الفرع غير موجود'; end if;
+    select exists(select 1 from branches where id=v_branch_id and company_id=p_company_id) into v_valid;
+    if not v_valid then raise exception 'الفرع غير موجود أو لا يتبع الشركة الحالية'; end if;
 
     select exists(select 1 from items i where i.company_id=p_company_id and i.id=v_item_id and i.item_code=v_effect.item_code) into v_valid;
     if not v_valid then raise exception 'الصنف غير متسق مع سياق الشركة: %',v_effect.item_code; end if;
@@ -146,12 +157,16 @@ $$;
 
 create or replace function public.complete_manual_stock_voucher_atomic(p_company_id uuid,p_voucher_code text,p_user_email text)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare v_voucher stock_vouchers%rowtype; v_expected_status text;
+declare v_voucher stock_vouchers%rowtype; v_expected_status text; v_settings_company uuid;
 begin
+  select company_id into v_settings_company from app_settings limit 1;
+  if v_settings_company is null or v_settings_company <> p_company_id then
+    raise exception 'سياق الشركة غير متسق مع إعدادات النظام';
+  end if;
   select * into v_voucher from stock_vouchers where company_id=p_company_id and voucher_code=p_voucher_code for update;
   if not found then raise exception 'الإذن غير موجود'; end if;
-  v_expected_status:=case when v_voucher.type='Transfer' then 'Received' else 'Sent' end;
-  if v_voucher.status<>v_expected_status then raise exception 'حالة الإذن لا تسمح بالإكمال'; end if;
+  v_expected_status:=case when v_voucher.type in ('Transfer','DirectReturn') then 'Received' when v_voucher.type in ('DirectSale','SupplierReturn') then 'Sent' else null end;
+  if v_expected_status is null or v_voucher.status<>v_expected_status then raise exception 'حالة الإذن لا تسمح بالإكمال'; end if;
   update stock_vouchers set status='Completed',completed_at=now(),completed_by=p_user_email
   where id=v_voucher.id and company_id=p_company_id and status=v_expected_status;
   if not found then raise exception 'فشل إكمال الإذن'; end if;
@@ -161,8 +176,12 @@ $$;
 
 create or replace function public.cancel_manual_stock_voucher_atomic(p_company_id uuid,p_voucher_code text,p_user_email text)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare v_voucher stock_vouchers%rowtype;
+declare v_voucher stock_vouchers%rowtype; v_settings_company uuid;
 begin
+  select company_id into v_settings_company from app_settings limit 1;
+  if v_settings_company is null or v_settings_company <> p_company_id then
+    raise exception 'سياق الشركة غير متسق مع إعدادات النظام';
+  end if;
   select * into v_voucher from stock_vouchers where company_id=p_company_id and voucher_code=p_voucher_code for update;
   if not found then raise exception 'الإذن غير موجود'; end if;
   if v_voucher.status<>'Draft' then raise exception 'لا يمكن إلغاء إذن بعد تنفيذ حركة مخزنية؛ استخدم حركة عكسية رسمية'; end if;
