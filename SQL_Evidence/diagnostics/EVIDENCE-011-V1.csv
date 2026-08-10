@@ -1,0 +1,5 @@
+schema_name,function_name,arguments,security_definer,public_execute,service_role_execute
+public,cancel_manual_stock_voucher_atomic,"p_company_id uuid, p_voucher_code text, p_user_email text",true,false,true
+public,complete_manual_stock_voucher_atomic,"p_company_id uuid, p_voucher_code text, p_user_email text",true,false,true
+public,create_manual_stock_voucher_atomic,"p_company_id uuid, p_type text, p_reference text, p_from_type text, p_from_id uuid, p_to_type text, p_to_id uuid, p_notes text, p_created_by text, p_items jsonb",true,false,true
+public,post_manual_stock_voucher_atomic,"p_company_id uuid, p_voucher_code text, p_operation text, p_user_email text, p_effects jsonb",true,false,true

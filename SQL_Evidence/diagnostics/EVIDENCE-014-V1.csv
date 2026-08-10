@@ -1,0 +1,15 @@
+table_name,column_name
+stock_branches,allocated_qty
+stock_branches,branch_id
+stock_branches,item_id
+stock_branches,qty
+stock_voucher_details,item_code
+stock_voucher_details,item_id
+stock_voucher_details,qty
+stock_voucher_details,received_qty
+stock_voucher_details,voucher_id
+stock_vouchers,company_id
+stock_vouchers,received_date
+stock_vouchers,sent_date
+stock_vouchers,status
+stock_vouchers,voucher_code
