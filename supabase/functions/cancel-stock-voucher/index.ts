@@ -1,11 +1,11 @@
-import { requireUser, getCompanyContext, supabase, json } from "../_shared/rawaea-auth.ts"
+import { requireWarehouseVoucherAccess, getCompanyContext, supabase, json } from "../_shared/rawaea-auth.ts"
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json(req, "ok")
   if (req.method !== "POST") return json(req, { success: false, msg: "طريقة الطلب غير مدعومة" }, 405)
 
   try {
-    const user = await requireUser(req)
+    const user = await requireWarehouseVoucherAccess(req)
     const { companyId } = await getCompanyContext()
     const body = await req.json()
     const voucherCode = body.voucher_code
