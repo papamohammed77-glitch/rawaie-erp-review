@@ -1,6 +1,18 @@
 import { requireWarehouseVoucherAccess, getCompanyContext, supabase, json } from "../_shared/rawaea-auth.ts"
 import { validateVoucherEndpoints } from "../_shared/manual-voucher-rules.ts"
 
+async function resolveBranchId(companyId: string, branchCode: string) {
+  const { data, error } = await supabase
+    .from("branches")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("branch_code", branchCode)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data?.id) throw new Error("الفرع غير موجود: " + branchCode)
+  return data.id
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json(req, "ok")
   if (req.method !== "POST") return json(req, { success: false, msg: "طريقة الطلب غير مدعومة" }, 405)
@@ -13,10 +25,29 @@ Deno.serve(async (req) => {
     const items = Array.isArray(body.items) ? body.items : []
     if (!body.type || items.length === 0) throw new Error("النوع والأصناف مطلوبة")
 
-    const fromType = body.fromType || "Branch"
-    const fromId = body.fromId || null
-    const toType = body.toType || "Branch"
-    const toId = body.toId || null
+    let fromType = body.fromType || "Branch"
+    let fromId = body.fromId || null
+    let toType = body.toType || "Branch"
+    let toId = body.toId || null
+
+    // Backward-compatible normalization for the current vouchers UI.
+    // MAIN is a legacy branch code, not a UUID. Resolve it here without weakening
+    // the database contract. For vehicle flows, resolve the authenticated user's
+    // VAN-{email} holding branch server-side instead of trusting a client-supplied ID.
+    if (fromType === "Branch" && fromId === "MAIN") {
+      fromId = await resolveBranchId(companyId, "MAIN")
+    }
+    if (toType === "Branch" && !toId && body.type === "DirectSale") {
+      const vanCode = "VAN-" + (user.email || "")
+      toId = await resolveBranchId(companyId, vanCode)
+    }
+    if (fromType === "Branch" && !fromId && body.type === "DirectReturn") {
+      const vanCode = "VAN-" + (user.email || "")
+      fromId = await resolveBranchId(companyId, vanCode)
+    }
+    if (toType === "Branch" && !toId && body.type === "DirectReturn") {
+      toId = await resolveBranchId(companyId, "MAIN")
+    }
 
     validateVoucherEndpoints({
       type: body.type,
