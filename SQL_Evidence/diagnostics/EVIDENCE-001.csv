@@ -1,0 +1,128 @@
+table_name,column_name,data_type,is_nullable
+app_settings,id,uuid,NO
+app_settings,company_id,uuid,NO
+app_settings,delivery_fee,numeric,YES
+app_settings,min_invoice_amount,numeric,YES
+app_settings,tax_rate,numeric,YES
+app_settings,company_phone,character varying,YES
+app_settings,company_name,character varying,YES
+app_settings,company_logo,text,YES
+app_settings,runsheet_serial,integer,YES
+app_settings,order_serial,integer,YES
+app_settings,created_at,timestamp with time zone,YES
+app_settings,updated_at,timestamp with time zone,YES
+app_settings,status,character varying,YES
+app_settings,trial_end_date,date,YES
+app_settings,subscription_end_date,date,YES
+app_settings,store_name,character varying,YES
+app_settings,store_logo,text,YES
+app_settings,store_primary_color,character varying,YES
+app_settings,store_secondary_color,character varying,YES
+app_settings,payment_method,character varying,YES
+app_settings,currency,character varying,YES
+app_settings,main_branch_id,uuid,YES
+branches,id,uuid,NO
+branches,company_id,uuid,NO
+branches,branch_code,character varying,NO
+branches,name,character varying,NO
+branches,location,text,YES
+branches,manager,character varying,YES
+branches,phone,character varying,YES
+branches,is_active,boolean,YES
+branches,created_at,timestamp with time zone,YES
+branches,updated_at,timestamp with time zone,YES
+companies,id,uuid,NO
+companies,company_code,character varying,NO
+companies,name,character varying,NO
+companies,logo_url,text,YES
+companies,tax_id,character varying,YES
+companies,phone,character varying,YES
+companies,email,character varying,YES
+companies,address,text,YES
+companies,is_active,boolean,YES
+companies,created_at,timestamp with time zone,YES
+companies,updated_at,timestamp with time zone,YES
+companies,website,text,YES
+inventory_log,id,uuid,NO
+inventory_log,company_id,uuid,NO
+inventory_log,log_code,character varying,NO
+inventory_log,movement_date,date,NO
+inventory_log,voucher_id,character varying,YES
+inventory_log,item_id,uuid,YES
+inventory_log,item_code,character varying,YES
+inventory_log,item_name,character varying,YES
+inventory_log,movement_type,character varying,NO
+inventory_log,qty,numeric,NO
+inventory_log,reference,text,YES
+inventory_log,user_email,character varying,YES
+inventory_log,created_at,timestamp with time zone,YES
+items,id,uuid,NO
+items,company_id,uuid,NO
+items,item_code,character varying,NO
+items,barcode,character varying,YES
+items,name,character varying,NO
+items,search_label,text,YES
+items,category_id,uuid,YES
+items,unit,character varying,NO
+items,alt_unit,character varying,YES
+items,alt_unit_qty,numeric,YES
+items,sales_price,numeric,NO
+items,old_price,numeric,YES
+items,cost_price,numeric,YES
+items,weight_kg,numeric,YES
+items,volume_m3,numeric,YES
+items,reorder_point,numeric,YES
+items,max_qty,numeric,YES
+items,description,text,YES
+items,image_url,text,YES
+items,is_active,boolean,YES
+items,created_at,timestamp with time zone,YES
+items,updated_at,timestamp with time zone,YES
+items,category,text,YES
+items,show_in_store,boolean,YES
+items,discount_percent,numeric,YES
+items,discount_start,date,YES
+items,discount_end,date,YES
+items,is_daily_deal,boolean,YES
+items,badge_text,character varying,YES
+items,max_qty_per_order,integer,YES
+items,sort_order,integer,YES
+stock_branches,id,uuid,NO
+stock_branches,branch_id,uuid,NO
+stock_branches,item_id,uuid,NO
+stock_branches,qty,numeric,NO
+stock_branches,allocated_qty,numeric,NO
+stock_branches,available_qty,numeric,YES
+stock_branches,updated_at,timestamp with time zone,YES
+stock_voucher_details,id,uuid,NO
+stock_voucher_details,voucher_id,uuid,NO
+stock_voucher_details,item_id,uuid,NO
+stock_voucher_details,item_code,character varying,YES
+stock_voucher_details,item_name,character varying,YES
+stock_voucher_details,unit,character varying,YES
+stock_voucher_details,qty,numeric,NO
+stock_voucher_details,unit_price,numeric,YES
+stock_voucher_details,received_qty,numeric,YES
+stock_voucher_details,notes,text,YES
+stock_voucher_details,created_at,timestamp with time zone,YES
+stock_vouchers,id,uuid,NO
+stock_vouchers,company_id,uuid,NO
+stock_vouchers,voucher_code,character varying,NO
+stock_vouchers,voucher_date,date,NO
+stock_vouchers,type,character varying,NO
+stock_vouchers,status,character varying,YES
+stock_vouchers,from_branch_id,uuid,YES
+stock_vouchers,to_branch_id,uuid,YES
+stock_vouchers,from_type,character varying,YES
+stock_vouchers,from_id,uuid,YES
+stock_vouchers,to_type,character varying,YES
+stock_vouchers,to_id,uuid,YES
+stock_vouchers,reference,character varying,YES
+stock_vouchers,notes,text,YES
+stock_vouchers,created_by,character varying,YES
+stock_vouchers,sent_date,timestamp with time zone,YES
+stock_vouchers,received_date,timestamp with time zone,YES
+stock_vouchers,completed_at,timestamp with time zone,YES
+stock_vouchers,created_at,timestamp with time zone,YES
+stock_vouchers,updated_at,timestamp with time zone,YES
+stock_vouchers,source,text,YES
