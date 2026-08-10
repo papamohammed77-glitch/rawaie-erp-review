@@ -1,5 +1,5 @@
 # RAWAEA ARCHITECTURE CONSTITUTION
-Version: 1.0
+Version: 1.1
 
 Status: ACTIVE
 
@@ -7,7 +7,7 @@ Authority:
 Chief Architecture Document
 
 Last Updated:
-<DATE>
+2026-08-10
 
 ------------------------------------------------------------
 
@@ -168,6 +168,55 @@ Backward Compatibility
 Every migration must preserve production data.
 
 Never sacrifice data integrity.
+
+------------------------------------------------------------
+
+CURRENT DEPLOYMENT MODEL
+------------------------------------------------------------
+
+The current RAWAEA ERP edition is intentionally deployed as:
+
+Single Company
++
+Multi Branch
++
+Multi User
+
+The current edition does NOT introduce full Multi-Company / Multi-Tenant
+operational complexity.
+
+company_id remains part of the data model where required to preserve
+forward compatibility with a future Multi-Company edition.
+
+In the current edition, company context represents the single operating
+company and must not be treated as a client-selectable tenant context.
+
+Future Multi-Company capability may expand this model without requiring
+business applications to become independent sources of business truth.
+
+------------------------------------------------------------
+
+PLATFORM AUTHORITY BOUNDARY
+------------------------------------------------------------
+
+The System Owner / Platform Authority is a distinct authority domain from
+ordinary operational users.
+
+This authority already exists in the system and is NOT to be recreated as
+part of domain or inventory repair work.
+
+Operational roles and permissions govern execution of company business
+operations.
+
+Platform authority governs the system itself, including platform-level
+control and licensing authority where applicable.
+
+Inventory, Sales, Warehouse, Van Sales, and other operational repairs must
+not collapse Platform Authority into the ordinary operational user model.
+
+No inventory repair may modify, replace, or weaken the existing Platform
+Authority boundary unless a separate architectural decision explicitly
+requires it.
 
 ------------------------------------------------------------
 
