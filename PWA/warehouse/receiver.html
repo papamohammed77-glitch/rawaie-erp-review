@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>مسؤول الاستلام | الروائع ERP</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#059669">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3/dist/dexie.min.js"></script>
+    <script src="../core.js"></script>
+    <script>var supabase = window.supabase;</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#f8fafc;-webkit-tap-highlight-color:transparent}
+        .auth-container{background:linear-gradient(135deg,#064e3b 0%,#065f46 40%,#059669 100%)}
+        .card{background:#fff;border-radius:24px;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 24px rgba(0,0,0,0.03);transition:all 0.2s ease}
+        .card:active{transform:scale(0.985)}
+        .btn-primary{background:linear-gradient(135deg,#059669,#10b981);color:#fff;padding:1rem 1.5rem;border-radius:16px;font-weight:700;border:none;cursor:pointer;width:100%;box-shadow:0 4px 12px rgba(5,150,105,0.25)}
+        .btn-primary:active{transform:scale(0.97)}
+        .btn-danger{background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;padding:0.75rem 1.25rem;border-radius:14px;font-weight:700;border:none;cursor:pointer;transition:all 0.2s ease;box-shadow:0 4px 12px rgba(239,68,68,0.2)}
+        .tab-btn{transition:all 0.2s ease}
+        .tab-btn.active{border-bottom-color:#059669;color:#0f172a}
+        .accordion-content{max-height:0;overflow:hidden;transition:max-height 0.3s ease-out}
+        .accordion-content.open{max-height:2000px}
+        .slide-in{animation:slideIn 0.3s ease}
+        @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .skeleton{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center auth-container p-4">
+    <div class="bg-white rounded-[36px] shadow-2xl p-6 w-[92%] max-w-md slide-in">
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-emerald-200 mb-5">
+                <i class="fa-solid fa-boxes-stacked text-white text-3xl"></i>
+            </div>
+            <h1 class="font-black text-2xl text-slate-800">الروائع</h1>
+            <p class="text-sm text-slate-400 font-semibold mt-1">مسؤول الاستلام</p>
+        </div>
+        <div class="space-y-4">
+            <div><input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-emerald-500 outline-none font-semibold text-sm"></div>
+            <div class="relative"><input id="loginPass" type="password" placeholder="كلمة السر" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-emerald-500 outline-none font-semibold text-sm pr-12"><button type="button" onclick="App.togglePass()" class="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-slate-300"><i id="passIcon" class="fa-solid fa-eye"></i></button></div>
+        </div>
+        <button onclick="App.doLogin()" class="w-full bg-gradient-to-r from-emerald-600 to-emerald-500 text-white py-4 rounded-2xl font-bold text-base shadow-lg mt-6">تسجيل الدخول</button>
+        <p id="loginMsg" class="text-center text-xs text-red-500 font-bold mt-4 hidden"></p>
+    </div>
+</div>
+
+<div id="mainApp" class="hidden flex flex-col h-full">
+    <header class="bg-gradient-to-r from-emerald-700 to-emerald-600 text-white p-4 flex items-center justify-between sticky top-0 z-30 shadow-md flex-shrink-0">
+        <span class="font-black text-base">📦 مسؤول الاستلام</span>
+        <div class="flex items-center gap-2">
+            <span id="connDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span id="connLabel" class="text-xs font-bold">متصل</span>
+            <button onclick="App.doLogout()" class="bg-white/15 w-9 h-9 rounded-full"><i class="fa-solid fa-arrow-right-from-bracket text-xs"></i></button>
+        </div>
+    </header>
+
+    <div class="flex gap-1.5 p-2 bg-white border-b border-slate-100 overflow-x-auto flex-shrink-0">
+        <button onclick="App.switchTab('pending')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm active" id="tab-pending">📋 قيد الاستلام</button>
+        <button onclick="App.switchTab('completed')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-completed">✅ مكتملة</button>
+        <button onclick="App.switchTab('account')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-account">⚙️ حسابي</button>
+    </div>
+
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+</div>
+
+<script>
+var App = {
+    currentUser: null,
+    pubUserId: null,
+    currentTab: 'pending',
+    purchaseOrders: [],
+    activeTimers: {},
+
+    togglePass: function(){
+        var p = RW_UI.byId('loginPass');
+        var i = RW_UI.byId('passIcon');
+        if(p.type === 'password'){ p.type = 'text'; i.className = 'fa-solid fa-eye-slash'; }
+        else { p.type = 'password'; i.className = 'fa-solid fa-eye'; }
+    },
+
+    doLogin: function(){
+        var email = RW_UI.byId('loginEmail').value.trim();
+        var pass = RW_UI.byId('loginPass').value.trim();
+        if(!email || !pass){
+            RW_UI.byId('loginMsg').innerText = 'أدخل البيانات';
+            RW_UI.byId('loginMsg').classList.remove('hidden');
+            return;
+        }
+        RW_UI.byId('loginMsg').classList.add('hidden');
+        RW_UI.showLoader('جاري تسجيل الدخول...');
+        RW_Auth.doLogin(email, pass, function(user, err) {
+            RW_UI.hideLoader();
+            if (err) {
+                RW_UI.byId('loginMsg').innerText = err;
+                RW_UI.byId('loginMsg').classList.remove('hidden');
+            } else {
+                App.init();
+            }
+        });
+    },
+
+    init: function(){
+        var self = this;
+        RW_Auth.init(function(user, err) {
+            if (err || !user) {
+                RW_UI.showError('انتهت الجلسة. يرجى إعادة التحميل.', function() { location.reload(); });
+                return;
+            }
+            self.currentUser = user;
+            
+            if (!user.isOwner && user.activeWarehouseRole !== 'استلام') {
+                RW_UI.showError('دورك النشط هو "' + (user.activeWarehouseRole || 'غير محدد') + '". الرجاء التواصل مع مشرف المخازن.', function() { RW_Auth.doLogout(); });
+                return;
+            }
+
+            RW_UI.safeText(RW_UI.byId('headerUserName'), user.name);
+            self.enterApp();
+        });
+    },
+
+    enterApp: function(){
+        RW_UI.byId('loginScreen').classList.add('hidden');
+        RW_UI.byId('mainApp').classList.remove('hidden');
+        RW_UI.updateConnectionStatus('connDot', 'connLabel');
+        window.addEventListener('online', function() { RW_UI.updateConnectionStatus('connDot', 'connLabel'); });
+        window.addEventListener('offline', function() { RW_UI.updateConnectionStatus('connDot', 'connLabel'); });
+        this.switchTab('pending');
+    },
+
+    doLogout: function(){
+        RW_Auth.doLogout(function() {
+            RW_UI.byId('mainApp').classList.add('hidden');
+            RW_UI.byId('loginScreen').classList.remove('hidden');
+        });
+    },
+
+    switchTab: function(tab){
+        this.currentTab = tab;
+        var tabs = ['pending', 'completed', 'account'];
+        for (var i = 0; i < tabs.length; i++) {
+            var btn = RW_UI.byId('tab-' + tabs[i]);
+            if (btn) { btn.classList.remove('active'); btn.classList.add('text-slate-400'); }
+        }
+        var activeBtn = RW_UI.byId('tab-' + tab);
+        if (activeBtn) { activeBtn.classList.add('active'); activeBtn.classList.remove('text-slate-400'); }
+        
+        if (tab === 'pending') this.loadPurchaseOrders();
+        else if (tab === 'completed') this.renderCompleted();
+        else if (tab === 'account') this.renderAccount();
+    },
+
+    loadPurchaseOrders: function(){
+        var self = this;
+        RW_UI.showSkeleton('mainContent', 3, 'card');
+
+        supabase.from('purchase_orders').select('po_code, po_date, supplier_name, status, total_amount').in('status', ['Sent', 'Partially Received']).order('po_date', { ascending: false }).limit(50).then(function(res) {
+            self.purchaseOrders = res.data || [];
+            self.renderList();
+        }).catch(function(err) {
+            RW_UI.showEmptyState('mainContent', 'فشل تحميل البيانات. تأكد من الاتصال.', '📡');
+        });
+    },
+
+    renderList: function(){
+        var self = this;
+        var filtered = this.purchaseOrders;
+        var html = '';
+        html += '<div class="mb-4"><p class="text-slate-400 text-sm">أهلاً، <span class="font-bold text-slate-700">' + (this.currentUser.name || 'زميل') + '</span> 👋</p></div>';
+        html += '<input type="text" id="searchPO" placeholder="🔍 ابحث عن أمر شراء..." class="w-full p-4 bg-white rounded-2xl border-2 border-slate-100 focus:border-emerald-400 outline-none font-semibold text-sm shadow-sm mb-4" oninput="App.renderList()">';
+        html += '<h2 class="text-lg font-black mb-4">📦 أوامر الشراء المعلقة</h2>';
+        
+        if (filtered.length === 0) {
+            html += '<div class="text-center py-12"><div class="text-6xl mb-4">☕</div><p class="text-slate-400 font-bold">لا توجد أوامر شراء معلقة.</p><p class="text-slate-300 text-sm mt-1">استمتع بقهوتك حتى تأتي مهمة جديدة!</p></div>';
+        } else {
+            var q = (RW_UI.byId('searchPO') ? RW_UI.byId('searchPO').value : '').toLowerCase();
+            if (q) {
+                filtered = filtered.filter(function(po) { return po.po_code.toLowerCase().indexOf(q) !== -1 || (po.supplier_name || '').toLowerCase().indexOf(q) !== -1; });
+            }
+            for (var i = 0; i < filtered.length; i++) {
+                var po = filtered[i];
+                var sc = po.status === 'Sent' ? 'bg-amber-50 text-amber-600' : 'bg-orange-50 text-orange-600';
+                var sl = po.status === 'Sent' ? 'مُرسل' : 'استلام جزئي';
+                html += '<div class="card mb-3 cursor-pointer slide-in"><div class="flex justify-between items-center" onclick="App.toggleAccordion(' + i + ',\'' + po.po_code + '\')"><div><span class="font-black">' + po.po_code + '</span><p class="text-xs text-slate-400">' + po.po_date + ' | ' + (po.supplier_name || '---') + '</p></div><div class="flex items-center gap-2"><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ' + sc + '">' + sl + '</span><i class="fa-solid fa-chevron-down text-slate-300" id="chevron-' + i + '"></i></div></div><div class="accordion-content" id="accordion-' + i + '"><div class="border-t mt-3 pt-3"><div id="details-' + i + '" class="text-center py-4">جاري تحميل التفاصيل...</div><button id="btn-rec-' + i + '" class="btn-primary mt-4 hidden" onclick="App.submitReceiving(' + i + ',\'' + po.po_code + '\')"><i class="fa-solid fa-check ml-2"></i> اعتماد الاستلام</button></div></div></div>';
+            }
+        }
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+    },
+
+    toggleAccordion: function(i, code){
+        var a = RW_UI.byId('accordion-' + i);
+        var c = RW_UI.byId('chevron-' + i);
+        if (!a) return;
+        if (a.classList.contains('open')) {
+            a.classList.remove('open');
+            if (c) c.className = 'fa-solid fa-chevron-down text-slate-300';
+            if (this.activeTimers[i]) { clearInterval(this.activeTimers[i]); delete this.activeTimers[i]; }
+        } else {
+            a.classList.add('open');
+            if (c) c.className = 'fa-solid fa-chevron-up text-slate-300';
+            this.loadPODetails(i, code);
+        }
+    },
+
+    loadPODetails: function(i, code){
+        var self = this;
+        RW_UI.safeHTML(RW_UI.byId('details-' + i), '<div class="text-center py-4"><i class="fa-solid fa-spinner fa-spin"></i> جاري التحميل...</div>');
+        supabase.from('purchase_order_details').select('item_code, item_name, qty_ordered, unit').eq('po_code', code).then(function(r) {
+            var items = r.data || [];
+            var html = '';
+            for (var j = 0; j < items.length; j++) {
+                var it = items[j];
+                html += '<div class="flex justify-between items-center p-3 border-b"><div><p class="font-bold">' + (it.item_name || '') + '</p><p class="text-xs text-slate-400">' + it.item_code + ' | مطلوب: ' + it.qty_ordered + ' ' + (it.unit || 'حبة') + '</p></div><input type="number" id="qty-' + i + '-' + j + '" value="' + it.qty_ordered + '" min="0" max="' + it.qty_ordered + '" class="w-20 p-2 border rounded-xl text-center font-bold text-sm" data-item-code="' + it.item_code + '"></div>';
+            }
+            RW_UI.safeHTML(RW_UI.byId('details-' + i), html || '<p class="text-slate-400 text-center py-4">لا توجد أصناف.</p>');
+            var btn = RW_UI.byId('btn-rec-' + i);
+            if (btn) btn.classList.remove('hidden');
+        });
+    },
+
+    submitReceiving: function(i, code){
+        var self = this;
+        var items = [];
+        var qtyInputs = document.querySelectorAll('#details-' + i + ' input[type="number"]');
+        for (var j = 0; j < qtyInputs.length; j++) {
+            var q = parseInt(qtyInputs[j].value) || 0;
+            var itemCode = qtyInputs[j].getAttribute('data-item-code') || '';
+            items.push({ itemCode: itemCode, itemName: '', receivedQty: q, reason: '' });
+        }
+        
+        RW_UI.showConfirm('اعتماد استلام ' + code + '؟', function() {
+            var confirmBtn = document.querySelector('.swal2-confirm');
+            if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.innerText = 'جارٍ...'; }
+            
+            RW_UI.showLoader('جاري حفظ الاستلام...');
+            RW_API.call('receive-purchase', { po_code: code, itemsReceived: items, notes: '' }, function(json, err) {
+                RW_UI.hideLoader();
+                if (err || !json.success) {
+                    RW_UI.showError(json.msg || err || 'فشل الحفظ');
+                } else {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '✅ تم الاستلام بنجاح',
+                        html: '<div class="text-right"><p>تم استلام أمر الشراء <strong>' + code + '</strong>.</p><p>تم تحديث المخزون.</p></div>',
+                        confirmButtonText: 'حسناً',
+                        customClass: { popup: '!rounded-3xl', confirmButton: '!rounded-xl !bg-emerald-600' }
+                    });
+                    self.loadPurchaseOrders();
+                }
+            });
+        });
+    },
+
+    renderCompleted: function() {
+        var self = this;
+        RW_UI.showSkeleton('mainContent', 3, 'card');
+        
+        supabase.from('purchase_orders')
+            .select('po_code, po_date, supplier_name, status, total_amount')
+            .in('status', ['Received', 'Partially Received'])
+            .order('po_date', { ascending: false })
+            .limit(30)
+            .then(function(res) {
+                var orders = res.data || [];
+                var html = '';
+                html += '<h2 class="text-lg font-black mb-4">✅ أوامر الشراء المستلمة</h2>';
+                
+                if (orders.length === 0) {
+                    html += '<div class="text-center py-12"><div class="text-6xl mb-4">☕</div><p class="text-slate-400 font-bold">لا توجد استلامات مكتملة بعد.</p><p class="text-slate-300 text-sm mt-1">كل ما تستلمه سيظهر هنا.</p></div>';
+                } else {
+                    for (var i = 0; i < orders.length; i++) {
+                        var po = orders[i];
+                        var sc = po.status === 'Received' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700';
+                        var sl = po.status === 'Received' ? 'مكتمل' : 'استلام جزئي';
+                        html += '<div class="card mb-3 slide-in"><div class="flex justify-between items-center"><div><span class="font-black">' + po.po_code + '</span><p class="text-xs text-slate-400">' + po.po_date + ' | ' + (po.supplier_name || '---') + '</p></div><div><span class="px-2.5 py-0.5 rounded-full text-xs font-bold ' + sc + '">' + sl + '</span><p class="font-black text-emerald-600 mt-1 text-left">' + RW_UI.formatNumber(po.total_amount) + ' EGP</p></div></div></div>';
+                    }
+                }
+                RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+            })
+            .catch(function() {
+                RW_UI.showEmptyState('mainContent', 'فشل تحميل البيانات.', '📡');
+            });
+    },
+
+    renderAccount: function(){
+        var self = this;
+        var html = '<div class="text-center mb-8 mt-4"><div class="w-20 h-20 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl font-black shadow-lg mb-4">' + (this.currentUser.name || '?').charAt(0) + '</div><h2 class="font-black text-xl">' + (this.currentUser.name || this.currentUser.email) + '</h2><p class="text-sm text-slate-400">مسؤول استلام</p></div><div class="card mb-3"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-envelope"></i></div><div><p class="text-xs text-slate-400">البريد الإلكتروني</p><p class="font-bold text-sm">' + this.currentUser.email + '</p></div></div></div><button onclick="App.doLogout()" class="w-full bg-white border-2 border-red-100 text-red-500 py-4 rounded-2xl font-bold mt-6"><i class="fa-solid fa-arrow-right-from-bracket ml-2"></i> تسجيل الخروج</button>';
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+    }
+};
+
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('../sw.js').catch(function() {}); }
+document.addEventListener('DOMContentLoaded', function() {
+    RW_Auth.init(function(user, err) {
+        if (user) {
+            App.currentUser = user;
+            App.enterApp();
+        }
+    });
+});
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
