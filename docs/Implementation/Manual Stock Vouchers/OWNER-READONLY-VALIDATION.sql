@@ -20,11 +20,18 @@ where k.table_schema='public'
 order by k.table_name, k.ordinal_position;
 
 -- EVIDENCE-003: RLS state and policies for the affected tables
-select schemaname, tablename, rowsecurity, forcerowsecurity
-from pg_tables
-where schemaname='public'
-  and tablename in ('app_settings','companies','branches','items','stock_vouchers','stock_voucher_details','stock_branches','inventory_log')
-order by tablename;
+-- pg_tables on the target PostgreSQL version does not expose forcerowsecurity.
+-- Use pg_class.relrowsecurity / relforcerowsecurity instead.
+select n.nspname as schemaname,
+       c.relname as tablename,
+       c.relrowsecurity as rowsecurity,
+       c.relforcerowsecurity as forcerowsecurity
+from pg_class c
+join pg_namespace n on n.oid=c.relnamespace
+where n.nspname='public'
+  and c.relkind='r'
+  and c.relname in ('app_settings','companies','branches','items','stock_vouchers','stock_voucher_details','stock_branches','inventory_log')
+order by c.relname;
 
 select schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
 from pg_policies
