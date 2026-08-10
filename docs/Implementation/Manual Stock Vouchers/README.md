@@ -53,6 +53,7 @@ This closes the historical gap where only one side of the custody movement was u
 ## Safety model
 
 - Company context comes from `app_settings`, never from the client.
+- Branch endpoints are validated against the current company context.
 - Voucher is locked before movement processing.
 - Stock rows are locked before mutation.
 - All effects for one voucher operation are one database transaction.
@@ -60,6 +61,7 @@ This closes the historical gap where only one side of the custody movement was u
 - OUT movements enforce `qty - allocated_qty` availability.
 - Duplicate send/receive is rejected by voucher state.
 - Cancellation is Draft-only. Post-movement cancellation requires a compensating movement.
+- The documented warehouse authorization boundary (`active_warehouse_role = "أذونات"`) is enforced at the Edge layer, with the existing owner bypass preserved.
 - Database functions are executable only by `service_role`.
 
 ## Final files
@@ -83,14 +85,14 @@ supabase/functions/_shared/manual-voucher-rules.ts
 
 ### Database
 
-Execute in this order only after the read-only gate passes:
+Execute in this order only after the read-only gate and subsequent validation pass:
 
 ```text
 supabase/migrations/20260810_manual_voucher_core_v1.sql
 supabase/migrations/20260810_manual_voucher_core_v1_patch.sql
 ```
 
-The patch corrects the `DirectReturn: Received → Completed` transition.
+The patch re-applies the corrected `DirectReturn: Received → Completed` transition together with the same company-context protection as the base migration.
 
 ## Owner validation
 
@@ -98,6 +100,14 @@ Read-only validation pack:
 
 ```text
 docs/Implementation/Manual Stock Vouchers/OWNER-READONLY-VALIDATION.sql
+```
+
+The EVIDENCE-003 query uses `pg_class.relrowsecurity` / `relforcerowsecurity` because the target PostgreSQL `pg_tables` view does not expose `forcerowsecurity`.
+
+Current evidence is stored under:
+
+```text
+SQL_Evidence/diagnostics/
 ```
 
 ## Three-way review
@@ -110,7 +120,16 @@ docs/Implementation/Manual Stock Vouchers/TARGET-THREE-WAY-REVIEW.md
 
 This branch is **not a production approval**.
 
-The repository does not contain populated `SQL_Evidence/schema` or `SQL_Evidence/diagnostics` results for the current database. The code is therefore ready for owner validation, not for blind execution.
+The implementation has received static hardening for company/branch isolation and the documented warehouse authorization boundary, but database deployment and empirical validation have **not** been approved here.
+
+Required next gates include owner read-only validation, then safe transactional tests for:
+
+- multi-item atomicity
+- duplicate execution
+- insufficient stock rollback
+- company/branch isolation
+- authorization enforcement
+- concurrent sends/receives
 
 Do not modify:
 
