@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>مشرف المخازن | الروائع ERP</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="../core.js"></script>
+    <script>var supabase = window.supabase;</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#f1f5f9;-webkit-tap-highlight-color:transparent}
+        .auth-container{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 40%,#2563eb 100%)}
+        .card{background:#fff;border-radius:24px;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 24px rgba(0,0,0,0.03);transition:all 0.2s ease}
+        .stat-card{background:#fff;border-radius:20px;padding:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 20px rgba(0,0,0,0.03);cursor:pointer;transition:all 0.2s ease}
+        .stat-card:active{transform:scale(0.97)}
+        .btn-primary{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff;padding:0.75rem 1.5rem;border-radius:14px;font-weight:700;border:none;cursor:pointer;width:100%;box-shadow:0 4px 12px rgba(37,99,235,0.2)}
+        .tab-btn{transition:all 0.2s ease}
+        .slide-in{animation:slideIn 0.3s ease}
+        @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .skeleton{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .pulse{animation:softPulse 2s infinite}
+        @keyframes softPulse{0%{opacity:1}50%{opacity:0.7}100%{opacity:1}}
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center auth-container p-4">
+    <div class="bg-white rounded-[36px] shadow-2xl p-6 w-[92%] max-w-md slide-in">
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-blue-200 mb-5">
+                <i class="fa-solid fa-warehouse text-white text-3xl"></i>
+            </div>
+            <h1 class="font-black text-2xl text-slate-800">الروائع</h1>
+            <p class="text-sm text-slate-400 font-semibold mt-1">مشرف المخازن</p>
+        </div>
+        <div class="space-y-4">
+            <div><input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-blue-500 outline-none font-semibold text-sm"></div>
+            <div class="relative"><input id="loginPass" type="password" placeholder="كلمة السر" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-blue-500 outline-none font-semibold text-sm pr-12"><button type="button" onclick="App.togglePass()" class="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-slate-300"><i id="passIcon" class="fa-solid fa-eye"></i></button></div>
+        </div>
+        <button onclick="App.doLogin()" class="w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white py-4 rounded-2xl font-bold text-base shadow-lg mt-6">تسجيل الدخول</button>
+        <p id="loginMsg" class="text-center text-xs text-red-500 font-bold mt-4 hidden"></p>
+    </div>
+</div>
+
+<div id="mainApp" class="hidden flex flex-col h-full">
+    <header class="bg-gradient-to-r from-blue-700 to-blue-600 text-white p-4 flex items-center justify-between sticky top-0 z-30 shadow-md flex-shrink-0">
+        <span class="font-black text-base">👨‍💼 مشرف المخازن</span>
+        <div class="flex items-center gap-2"><span class="text-xs font-bold" id="headerUserName"></span><button onclick="App.doLogout()" class="bg-white/15 w-9 h-9 rounded-full"><i class="fa-solid fa-arrow-right-from-bracket text-xs"></i></button></div>
+    </header>
+    <div class="flex gap-1 p-2 bg-white border-b overflow-x-auto flex-shrink-0">
+        <button onclick="App.switchTab('dashboard')" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-sm bg-blue-600 text-white" id="tab-dashboard">📊 لوحة التحكم</button>
+        <button onclick="App.switchTab('roster')" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-roster">👥 الفريق</button>
+        <button onclick="App.switchTab('live')" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-live">🔴 الحي</button>
+    </div>
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+</div>
+
+<script>
+var App = {
+    currentUser: null, staffList: [], currentTab: 'dashboard', chartInstance: null,
+    togglePass: function(){var p=RW_UI.byId('loginPass'),i=RW_UI.byId('passIcon');if(p.type==='password'){p.type='text';i.className='fa-solid fa-eye-slash'}else{p.type='password';i.className='fa-solid fa-eye'}},
+    doLogin: function(){var e=RW_UI.byId('loginEmail').value.trim(),p=RW_UI.byId('loginPass').value.trim();if(!e||!p){RW_UI.byId('loginMsg').innerText='أدخل البيانات';RW_UI.byId('loginMsg').classList.remove('hidden');return}RW_UI.byId('loginMsg').classList.add('hidden');var s=this;RW_UI.showLoader('جاري تسجيل الدخول...');RW_Auth.doLogin(e,p,function(user,err){RW_UI.hideLoader();if(err){RW_UI.byId('loginMsg').innerText=err;RW_UI.byId('loginMsg').classList.remove('hidden')}else{s.init()}});},
+    init: function(){var s=this;RW_Auth.init(function(user,err){if(err||!user){if(err==='NO_SESSION')return;RW_UI.showError('فشل استعادة الجلسة');return}var isO=user.isOwner,perms=user.permissions,has=isO||perms.indexOf('warehouse_supervisor')!==-1||perms.indexOf('warehouse')!==-1;if(!has){RW_UI.showError('غير مصرح');RW_Auth.doLogout();return}RW_UI.safeText(RW_UI.byId('headerUserName'),user.name);s.currentUser=user;s.enterApp()})},
+    enterApp: function(){RW_UI.byId('loginScreen').classList.add('hidden');RW_UI.byId('mainApp').classList.remove('hidden');this.loadStaff();this.switchTab('dashboard')},
+    doLogout: function(){var s=this;RW_Auth.doLogout(function(){RW_UI.byId('mainApp').classList.add('hidden');RW_UI.byId('loginScreen').classList.remove('hidden')})},
+
+    switchTab: function(t){this.currentTab=t;['dashboard','roster','live'].forEach(function(x){var b=RW_UI.byId('tab-'+x);if(b){b.classList.remove('bg-blue-600','text-white');b.classList.add('text-slate-400')}});var a=RW_UI.byId('tab-'+t);if(a){a.classList.add('bg-blue-600','text-white');a.classList.remove('text-slate-400')}if(t==='dashboard')this.renderDashboard();else if(t==='roster')this.renderRoster();else if(t==='live')this.renderLive()},
+
+    loadStaff: function(){
+        var s=this;
+        supabase.from('users').select('id,name,email,role,active_warehouse_role').then(function(r){
+            s.staffList = r.data || [];
+        });
+    },
+
+    renderDashboard: function(){
+        var s=this; RW_UI.safeHTML(RW_UI.byId('mainContent'),'<div class="mb-6"><div class="skeleton h-20 w-full mb-4"></div><div class="skeleton h-20 w-full mb-3"></div></div>');
+        Promise.all([
+            supabase.from('purchase_orders').select('id').in('status',['Sent','Partially Received']),
+            supabase.from('runsheets').select('id').eq('status','Picking'),
+            supabase.from('runsheets').select('id').eq('status','Loading'),
+            supabase.from('runsheets').select('id').eq('status','Returning'),
+            supabase.from('runsheets').select('id').eq('status','Loaded')
+        ]).then(function(r){
+            var d = {
+                receiving: (r[0].data||[]).length,
+                picking: (r[1].data||[]).length,
+                loading: (r[2].data||[]).length,
+                returns: (r[3].data||[]).length,
+                unloading: (r[4].data||[]).length
+            };
+            var userName = (s.currentUser && s.currentUser.name) ? s.currentUser.name : 'مشرف';
+            var html='<div class="mb-4"><p class="text-slate-400 text-sm">أهلاً، <span class="font-bold text-slate-700">'+userName+'</span> 👋</p><p class="text-xs text-slate-400 mt-1">آخر تحديث: '+new Date().toLocaleTimeString('ar-EG')+'</p></div>';
+            html+='<h2 class="text-lg font-black mb-4">📊 نظرة عامة</h2>';
+            html+='<div class="grid grid-cols-2 gap-3 mb-6">';
+            var items = [
+                {key:'receiving',icon:'📦',label:'استلام',color:'from-emerald-500 to-emerald-600'},
+                {key:'picking',icon:'📋',label:'تحضير',color:'from-indigo-500 to-indigo-600'},
+                {key:'loading',icon:'🚛',label:'تحميل',color:'from-orange-500 to-orange-600'},
+                {key:'returns',icon:'↩️',label:'مرتجعات',color:'from-red-500 to-red-600'},
+                {key:'unloading',icon:'🔄',label:'تفريغ',color:'from-cyan-500 to-cyan-600'}
+            ];
+            for(var i=0;i<items.length;i++){
+                var it=items[i];
+                html+='<div class="stat-card" onclick="App.switchTab(\'live\')"><div class="bg-gradient-to-br '+it.color+' w-10 h-10 rounded-2xl flex items-center justify-center text-white text-lg mb-2">'+it.icon+'</div><div class="text-2xl font-black text-slate-800">'+d[it.key]+'</div><div class="text-xs text-slate-400">'+it.label+'</div></div>';
+            }
+            html+='</div>';
+            html+='<button onclick="App.switchTab(\'roster\')" class="btn-primary"><i class="fa-solid fa-users ml-2"></i> إدارة الفريق</button>';
+            RW_UI.safeHTML(RW_UI.byId('mainContent'),html);
+        });
+    },
+
+    renderRoster: function(){
+        var s=this; RW_UI.safeHTML(RW_UI.byId('mainContent'),'<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-blue-400"></i></div>');
+        var roles=['استلام','تحضير','تحميل','مرتجعات','تفريغ','أذونات','جرد','احتياطي'];
+        var icons={'استلام':'📦','تحضير':'📋','تحميل':'🚛','مرتجعات':'↩️','تفريغ':'🔄','أذونات':'📄','جرد':'🔍','احتياطي':'🪑'};
+        var html='<h2 class="text-lg font-black mb-4">👥 فريق المخازن</h2><p class="text-sm text-slate-400 mb-4">اختر دوراً لكل موظف. التغيير فوري.</p>';
+        if(!s.staffList.length){html+='<div class="card text-center text-slate-400">لا يوجد موظفون</div>'}
+        else {for(var i=0;i<s.staffList.length;i++){var emp=s.staffList[i];var role=emp.active_warehouse_role||'احتياطي';
+            html+='<div class="card mb-3 slide-in"><div class="flex justify-between items-center mb-3"><div><span class="font-bold">'+emp.name+'</span><br><span class="text-xs text-slate-400">'+emp.email+'</span></div><span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">'+(icons[role]||'')+' '+role+'</span></div><select class="w-full p-3 bg-slate-50 rounded-xl border font-bold text-sm" onchange="App.updateRole(\''+emp.id+'\',this.value)">';
+            for(var j=0;j<roles.length;j++){html+='<option value="'+roles[j]+'"'+(roles[j]===role?' selected':'')+'>'+(icons[roles[j]]||'')+' '+roles[j]+'</option>'}
+            html+='</select></div>';
+        }}
+        RW_UI.safeHTML(RW_UI.byId('mainContent'),html);
+    },
+
+    updateRole: function(userId,newRole){
+        var s=this; Swal.showLoading();
+        supabase.from('users').update({active_warehouse_role:newRole}).eq('id',userId).then(function(r){
+            Swal.close();
+            if(r.error){Swal.fire({title:'خطأ',text:r.error.message,icon:'error'})}
+            else {for(var i=0;i<s.staffList.length;i++){if(s.staffList[i].id===userId){s.staffList[i].active_warehouse_role=newRole;break}}s.renderRoster()}
+        });
+    },
+
+    renderLive: function(){
+        var s=this; RW_UI.safeHTML(RW_UI.byId('mainContent'),'<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-blue-400"></i></div>');
+        var html='<h2 class="text-lg font-black mb-4">🔴 مراقبة حية</h2>';
+        html+='<div class="grid grid-cols-2 gap-3" id="liveGrid"></div>';
+        RW_UI.safeHTML(RW_UI.byId('mainContent'),html);
+        Promise.all([
+            supabase.from('purchase_orders').select('po_code,supplier_name').in('status',['Sent','Partially Received']),
+            supabase.from('runsheets').select('runsheet_code,picker_id').eq('status','Picking'),
+            supabase.from('runsheets').select('runsheet_code,loader_id').eq('status','Loading'),
+            supabase.from('runsheets').select('runsheet_code,return_handler_id').eq('status','Returning'),
+            supabase.from('runsheets').select('runsheet_code').eq('status','Loaded')
+        ]).then(function(r){
+            var staffMap={};for(var i=0;i<s.staffList.length;i++){staffMap[s.staffList[i].id]=s.staffList[i].name}
+            var cats=[
+                {icon:'📦',label:'استلام',items:r[0].data||[],codeKey:'po_code',staffKey:null,staffLabel:'supplier_name'},
+                {icon:'📋',label:'تحضير',items:r[1].data||[],codeKey:'runsheet_code',staffKey:'picker_id',staffLabel:null},
+                {icon:'🚛',label:'تحميل',items:r[2].data||[],codeKey:'runsheet_code',staffKey:'loader_id',staffLabel:null},
+                {icon:'↩️',label:'مرتجعات',items:r[3].data||[],codeKey:'runsheet_code',staffKey:'return_handler_id',staffLabel:null},
+                {icon:'🔄',label:'تفريغ',items:r[4].data||[],codeKey:'runsheet_code',staffKey:null,staffLabel:null}
+            ];
+            var gridHtml='';
+            for(var j=0;j<cats.length;j++){
+                var c=cats[j];
+                gridHtml+='<div class="stat-card"><div class="text-2xl mb-1">'+c.icon+'</div><div class="text-lg font-black">'+(c.items.length)+'</div><div class="text-xs text-slate-400">'+c.label+'</div>';
+                for(var k=0;k<Math.min(c.items.length,3);k++){
+                    var item=c.items[k];
+                    var staffName=c.staffKey?(staffMap[item[c.staffKey]]||item[c.staffKey]):(c.staffLabel?item[c.staffLabel]:'');
+                    gridHtml+='<div class="text-xs text-slate-500 mt-1">'+item[c.codeKey]+(staffName?' - '+staffName:'')+'</div>';
+                }
+                if(c.items.length>3) gridHtml+='<div class="text-xs text-blue-500 mt-1">+ '+(c.items.length-3)+' أكثر</div>';
+                gridHtml+='</div>';
+            }
+            RW_UI.safeHTML(RW_UI.byId('liveGrid'),gridHtml);
+        });
+    }
+};
+RW_SW.register('../sw.js');
+document.addEventListener('DOMContentLoaded',function(){App.init();});
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
