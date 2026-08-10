@@ -10,8 +10,7 @@ Deno.serve(async (req) => {
     const { companyId } = await getCompanyContext()
     const body = await req.json()
     const voucherCode = body.voucher_code
-    const receivedItems = Array.isArray(body.receivedItems) ? body.receivedItems : []
-    if (!voucherCode || receivedItems.length === 0) throw new Error("البيانات غير مكتملة")
+    if (!voucherCode) throw new Error("رقم الإذن مطلوب")
 
     const { data: voucher, error: voucherError } = await supabase
       .from("stock_vouchers")
@@ -24,11 +23,25 @@ Deno.serve(async (req) => {
 
     const { data: details, error: detailsError } = await supabase
       .from("stock_voucher_details")
-      .select("item_id, item_code, item_name, qty")
+      .select("item_id, item_code, item_name, qty, received_qty")
       .eq("voucher_id", voucher.id)
       .order("id")
     if (detailsError) throw new Error(detailsError.message)
     if (!details?.length) throw new Error("الإذن لا يحتوي على أصناف")
+
+    // Empty receivedItems means: receive all remaining quantities.
+    // This is intentionally resolved server-side from the voucher details,
+    // so the client cannot invent quantities or bypass the remaining balance.
+    let receivedItems = Array.isArray(body.receivedItems) ? body.receivedItems : []
+    if (receivedItems.length === 0) {
+      receivedItems = details
+        .map((d) => ({
+          itemCode: d.item_code,
+          receivedQty: Number(d.qty || 0) - Number(d.received_qty || 0),
+        }))
+        .filter((x) => x.receivedQty > 0)
+    }
+    if (receivedItems.length === 0) throw new Error("لا توجد كمية متبقية للاستلام")
 
     const effects = buildReceiveEffects(voucher, receivedItems, details)
     const { error } = await supabase.rpc("post_manual_stock_voucher_atomic", {
