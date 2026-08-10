@@ -60,12 +60,38 @@ Fix the proven problem with the smallest safe change that achieves the Target Co
 ## 16. Owner Execution Gate
 The owner is asked to execute Production SQL only after the CTO review has reached an explicit **GO**. If the status is BLOCK, no Production execution is requested.
 
-## 17. Stop Conditions
+## 17. Original-Baseline Comparison Gate
+Before any modified Edge Function or application is declared complete, superior to the original, or ready for Production, it MUST be compared against the **actual original/baseline artifact** in the repository.
+
+The comparison must establish, explicitly:
+- preserved functionality;
+- fixed defects;
+- intentional behavior changes;
+- removed behavior, if any;
+- missing logic;
+- missing functions;
+- missing validations;
+- missing security checks;
+- missing relationships/business rules;
+- regressions.
+
+A cleaner architecture, successful compilation, partial validation, or apparently correct behavior is **not** sufficient proof of superiority or completeness.
+
+The original baseline is the preservation reference; the modified implementation is the corrected-architecture reference. Both must be reconciled before the Release Gate can become GO.
+
+No guessed path, inferred baseline, name-only comparison, abbreviated comparison, or comparison against incomplete source is acceptable.
+
+If the actual original baseline cannot be located or read completely, the Release Gate is **BLOCKED** until it is found or its absence is conclusively established and documented.
+
+This rule applies to every future rescue/refactor Target, not only Manual Stock Vouchers.
+
+## 18. Stop Conditions
 Immediately stop and reassess only when:
 - a Production operation fails;
 - new evidence contradicts a closed decision;
 - actual schema/RLS/permissions differ materially from the verified contract;
 - an atomicity or inventory-integrity risk is discovered;
+- the actual original baseline cannot be reconciled;
 - or a change would exceed the agreed Target scope.
 
 Otherwise, continue forward without reopening closed work.
