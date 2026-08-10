@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>مدير المخازن | الروائع ERP</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0f766e">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="../core.js"></script>
+    <script>var supabase = window.supabase;</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#f1f5f9;-webkit-tap-highlight-color:transparent}
+        .auth-container{background:linear-gradient(135deg,#134e4a 0%,#0f766e 40%,#14b8a6 100%)}
+        .card{background:#fff;border-radius:24px;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 24px rgba(0,0,0,0.03)}
+        .stat-card{background:#fff;border-radius:20px;padding:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 20px rgba(0,0,0,0.03);transition:all 0.2s ease}
+        .stat-card:active{transform:scale(0.97)}
+        .btn-primary{background:linear-gradient(135deg,#0f766e,#14b8a6);color:#fff;padding:0.75rem 1.5rem;border-radius:14px;font-weight:700;border:none;cursor:pointer;width:100%}
+        .tab-btn{transition:all 0.2s ease}
+        .slide-in{animation:slideIn 0.3s ease}
+        @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .skeleton{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .chart-container{position:relative;width:100%;max-height:280px}
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center auth-container p-4">
+    <div class="bg-white rounded-[36px] shadow-2xl p-6 w-[92%] max-w-md slide-in">
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 bg-gradient-to-br from-teal-500 to-teal-700 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-teal-200 mb-5">
+                <i class="fa-solid fa-chart-pie text-white text-3xl"></i>
+            </div>
+            <h1 class="font-black text-2xl text-slate-800">الروائع</h1>
+            <p class="text-sm text-slate-400 font-semibold mt-1">مدير المخازن</p>
+        </div>
+        <div class="space-y-4">
+            <div><input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-teal-500 outline-none font-semibold text-sm"></div>
+            <div class="relative"><input id="loginPass" type="password" placeholder="كلمة السر" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-teal-500 outline-none font-semibold text-sm pr-12"><button type="button" onclick="App.togglePass()" class="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-slate-300"><i id="passIcon" class="fa-solid fa-eye"></i></button></div>
+        </div>
+        <button onclick="App.doLogin()" class="w-full bg-gradient-to-r from-teal-600 to-teal-500 text-white py-4 rounded-2xl font-bold text-base shadow-lg mt-6">تسجيل الدخول</button>
+        <p id="loginMsg" class="text-center text-xs text-red-500 font-bold mt-4 hidden"></p>
+    </div>
+</div>
+
+<div id="mainApp" class="hidden flex flex-col h-full">
+    <header class="bg-gradient-to-r from-teal-700 to-teal-600 text-white p-4 flex items-center justify-between sticky top-0 z-30 shadow-md flex-shrink-0">
+        <span class="font-black text-base">📊 مدير المخازن</span>
+        <div class="flex items-center gap-2"><span class="text-xs font-bold" id="headerUserName"></span><button onclick="App.doLogout()" class="bg-white/15 w-9 h-9 rounded-full"><i class="fa-solid fa-arrow-right-from-bracket text-xs"></i></button></div>
+    </header>
+    <div class="flex gap-1 p-2 bg-white border-b overflow-x-auto flex-shrink-0">
+        <button onclick="App.switchTab('dashboard')" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-sm bg-teal-600 text-white" id="tab-dashboard">📊 لوحة التحكم</button>
+        <button onclick="App.switchTab('roster')" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-roster">👥 الفريق</button>
+        <button onclick="App.switchTab('reports')" class="tab-btn whitespace-nowrap px-4 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-reports">📋 التقارير</button>
+    </div>
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+</div>
+
+<script>
+var App = {
+    currentUser: null, staffList: [], currentTab: 'dashboard', chartInstances: {},
+    togglePass: function(){var p=RW_UI.byId('loginPass'),i=RW_UI.byId('passIcon');if(p.type==='password'){p.type='text';i.className='fa-solid fa-eye-slash'}else{p.type='password';i.className='fa-solid fa-eye'}},
+    doLogin: function(){var e=RW_UI.byId('loginEmail').value.trim(),p=RW_UI.byId('loginPass').value.trim();if(!e||!p){RW_UI.byId('loginMsg').innerText='أدخل البيانات';RW_UI.byId('loginMsg').classList.remove('hidden');return}RW_UI.byId('loginMsg').classList.add('hidden');var s=this;RW_UI.showLoader('جاري تسجيل الدخول...');RW_Auth.doLogin(e,p,function(user,err){RW_UI.hideLoader();if(err){RW_UI.byId('loginMsg').innerText=err;RW_UI.byId('loginMsg').classList.remove('hidden')}else{s.init()}});},
+    init: function(){var s=this;RW_Auth.init(function(user,err){if(err||!user){if(err==='NO_SESSION')return;RW_UI.showError('فشل استعادة الجلسة');return}var isO=user.isOwner,perms=user.permissions,has=isO||perms.indexOf('warehouse_manager')!==-1||perms.indexOf('reports')!==-1;if(!has){RW_UI.showError('غير مصرح');RW_Auth.doLogout();return}RW_UI.safeText(RW_UI.byId('headerUserName'),user.name);s.currentUser=user;s.enterApp()})},
+    enterApp: function(){RW_UI.byId('loginScreen').classList.add('hidden');RW_UI.byId('mainApp').classList.remove('hidden');this.loadStaff();this.switchTab('dashboard')},
+    doLogout: function(){var s=this;RW_Auth.doLogout(function(){RW_UI.byId('mainApp').classList.add('hidden');RW_UI.byId('loginScreen').classList.remove('hidden')})},
+
+    switchTab: function(t){this.currentTab=t;['dashboard','roster','reports'].forEach(function(x){var b=RW_UI.byId('tab-'+x);if(b){b.classList.remove('bg-teal-600','text-white');b.classList.add('text-slate-400')}});var a=RW_UI.byId('tab-'+t);if(a){a.classList.add('bg-teal-600','text-white');a.classList.remove('text-slate-400')}if(t==='dashboard')this.renderDashboard();else if(t==='roster')this.renderRoster();else if(t==='reports')this.renderReports()},
+
+    loadStaff: function(){
+        var s=this;
+        supabase.from('users').select('id,name,email,role,active_warehouse_role').then(function(r){s.staffList=r.data||[]});
+    },
+
+    renderDashboard: function(){
+        var s=this; RW_UI.safeHTML(RW_UI.byId('mainContent'),'<div class="mb-6"><div class="skeleton h-20 w-full mb-4"></div><div class="skeleton h-40 w-full mb-3"></div></div>');
+        Promise.all([
+            supabase.from('stock_branches').select('qty,item_id'),
+            supabase.from('items').select('id,name,qty,reorder_point').order('qty',{ascending:true}).limit(10),
+            supabase.from('runsheets').select('id,status').in('status',['Picking','Loading','Delivering','Returning']),
+            supabase.from('stock_vouchers').select('id,type,status').order('created_at',{ascending:false}).limit(10)
+        ]).then(function(r){
+            var stockItems=r[0].data||[], lowStock=r[1].data||[], activeRS=r[2].data||[], vouchers=r[3].data||[];
+            var totalItems=stockItems.length;
+            var userName=(s.currentUser && s.currentUser.name) ? s.currentUser.name : 'مدير';
+            var html='<div class="mb-4"><p class="text-slate-400 text-sm">أهلاً، <span class="font-bold text-slate-700">'+userName+'</span> 👋</p><p class="text-xs text-slate-400 mt-1">آخر تحديث: '+new Date().toLocaleTimeString('ar-EG')+'</p></div>';
+            html+='<h2 class="text-lg font-black mb-4">📊 مؤشرات الأداء</h2>';
+            html+='<div class="grid grid-cols-2 gap-3 mb-6">';
+            html+='<div class="stat-card"><div class="text-3xl mb-1">📦</div><div class="text-xl font-black">'+totalItems+'</div><div class="text-xs text-slate-400">إجمالي الأصناف</div></div>';
+            html+='<div class="stat-card"><div class="text-3xl mb-1">⚠️</div><div class="text-xl font-black">'+lowStock.length+'</div><div class="text-xs text-slate-400">أصناف منخفضة</div></div>';
+            html+='<div class="stat-card"><div class="text-3xl mb-1">🔄</div><div class="text-xl font-black">'+activeRS.length+'</div><div class="text-xs text-slate-400">عمليات جارية</div></div>';
+            html+='<div class="stat-card"><div class="text-3xl mb-1">📄</div><div class="text-xl font-black">'+vouchers.length+'</div><div class="text-xs text-slate-400">أذونات حديثة</div></div>';
+            html+='</div>';
+            html+='<div class="card mb-4"><h3 class="font-bold mb-3">📈 توزيع العمليات الجارية</h3><div class="chart-container"><canvas id="opsChart"></canvas></div></div>';
+            html+='<button onclick="App.switchTab(\'reports\')" class="btn-primary mt-4"><i class="fa-solid fa-chart-bar ml-2"></i> التقارير التفصيلية</button>';
+            RW_UI.safeHTML(RW_UI.byId('mainContent'),html);
+            setTimeout(function(){s.renderOpsChart(activeRS)},300);
+        });
+    },
+
+    renderOpsChart: function(activeRS){
+        var ctx=document.getElementById('opsChart');if(!ctx)return;
+        var statuses={Picking:0,Loading:0,Delivering:0,Returning:0};
+        for(var i=0;i<activeRS.length;i++){statuses[activeRS[i].status]++}
+        if(this.chartInstances['opsChart'])this.chartInstances['opsChart'].destroy();
+        this.chartInstances['opsChart']=new Chart(ctx,{type:'doughnut',data:{labels:['تحضير','تحميل','توصيل','مرتجعات'],datasets:[{data:[statuses.Picking,statuses.Loading,statuses.Delivering,statuses.Returning],backgroundColor:['#6366f1','#ea580c','#2563eb','#dc2626']}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{family:'Cairo',size:10}}}}}});
+    },
+
+    renderRoster: function(){
+        var s=this; RW_UI.safeHTML(RW_UI.byId('mainContent'),'<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-teal-400"></i></div>');
+        var roles=['استلام','تحضير','تحميل','مرتجعات','تفريغ','أذونات','جرد','احتياطي'];
+        var icons={'استلام':'📦','تحضير':'📋','تحميل':'🚛','مرتجعات':'↩️','تفريغ':'🔄','أذونات':'📄','جرد':'🔍','احتياطي':'🪑'};
+        Promise.all([
+            supabase.from('runsheets').select('picker_id,loader_id,return_handler_id').in('status',['Picked','Loaded','Returned']),
+            supabase.from('purchase_orders').select('id').in('status',['Received','Partially Received'])
+        ]).then(function(r){
+            var ops=r[0].data||[];
+            var kpiMap={};
+            for(var i=0;i<ops.length;i++){
+                var ids=[ops[i].picker_id,ops[i].loader_id,ops[i].return_handler_id];
+                for(var j=0;j<ids.length;j++){if(ids[j])kpiMap[ids[j]]=(kpiMap[ids[j]]||0)+1}
+            }
+            for(var k=0;k<s.staffList.length;k++){s.staffList[k]._kpi=kpiMap[s.staffList[k].id]||0}
+            var html='<h2 class="text-lg font-black mb-4">👥 فريق المخازن</h2><p class="text-sm text-slate-400 mb-4">KPI لكل موظف: عدد العمليات المنجزة</p>';
+            for(var i=0;i<s.staffList.length;i++){var emp=s.staffList[i];var role=emp.active_warehouse_role||'احتياطي';
+                html+='<div class="card mb-3 slide-in"><div class="flex justify-between items-center mb-2"><div><span class="font-bold">'+emp.name+'</span><br><span class="text-xs text-slate-400">'+emp.email+'</span></div><span class="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-xs font-bold">✅ '+emp._kpi+' عملية</span></div><div class="flex justify-between items-center mb-3"><span class="text-xs text-slate-500">الدور:</span><span class="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-xs font-bold">'+(icons[role]||'')+' '+role+'</span></div><select class="w-full p-3 bg-slate-50 rounded-xl border font-bold text-sm" onchange="App.updateRole(\''+emp.id+'\',this.value)">';
+                for(var j=0;j<roles.length;j++){html+='<option value="'+roles[j]+'"'+(roles[j]===role?' selected':'')+'>'+(icons[roles[j]]||'')+' '+roles[j]+'</option>'}
+                html+='</select></div>';
+            }
+            RW_UI.safeHTML(RW_UI.byId('mainContent'),html);
+        });
+    },
+
+    updateRole: function(userId,newRole){
+        var s=this; Swal.showLoading();
+        supabase.from('users').update({active_warehouse_role:newRole}).eq('id',userId).then(function(r){
+            Swal.close();
+            if(r.error){Swal.fire({title:'خطأ',text:r.error.message,icon:'error'})}
+            else {for(var i=0;i<s.staffList.length;i++){if(s.staffList[i].id===userId){s.staffList[i].active_warehouse_role=newRole;break}}s.renderRoster()}
+        });
+    },
+
+    renderReports: function(){
+        var s=this; RW_UI.safeHTML(RW_UI.byId('mainContent'),'<div class="text-center py-10"><i class="fa-solid fa-spinner fa-spin text-2xl text-teal-400"></i></div>');
+        Promise.all([
+            supabase.from('items').select('id,name,qty,reorder_point').order('qty',{ascending:false}).limit(10),
+            supabase.from('items').select('id,name,qty,reorder_point').order('qty',{ascending:true}).limit(10),
+            supabase.from('stock_vouchers').select('voucher_code,type,status,voucher_date').order('voucher_date',{ascending:false}).limit(15),
+            supabase.from('runsheets').select('runsheet_code,status,run_date').order('run_date',{ascending:false}).limit(20)
+        ]).then(function(r){
+            var topItems=r[0].data||[], lowItems=r[1].data||[], vouchers=r[2].data||[], runsheets=r[3].data||[];
+            var html='<h2 class="text-lg font-black mb-4">📋 التقارير</h2>';
+            html+='<div class="card mb-4"><h3 class="font-bold mb-3">🏆 أفضل 10 أصناف</h3>';
+            for(var i=0;i<topItems.length;i++){html+='<div class="flex justify-between py-2 border-b text-sm"><span>'+(i+1)+'. '+topItems[i].name+'</span><span class="font-bold">'+topItems[i].qty+'</span></div>'}
+            html+='</div>';
+            html+='<div class="card mb-4"><h3 class="font-bold mb-3">⚠️ الأصناف المنخفضة</h3>';
+            for(var j=0;j<lowItems.length;j++){html+='<div class="flex justify-between py-2 border-b text-sm"><span>'+lowItems[j].name+'</span><span class="text-red-600 font-bold">'+lowItems[j].qty+' / '+lowItems[j].reorder_point+'</span></div>'}
+            html+='</div>';
+            html+='<div class="card mb-4"><h3 class="font-bold mb-3">📄 آخر الأذونات المخزنية</h3>';
+            for(var k=0;k<vouchers.length;k++){var v=vouchers[k];html+='<div class="flex justify-between py-2 border-b text-sm"><span class="font-bold">'+v.voucher_code+'</span><span class="text-xs text-slate-400">'+v.type+' | '+v.status+'</span></div>'}
+            html+='</div>';
+            html+='<div class="card mb-4"><h3 class="font-bold mb-3">🚛 آخر الرانشيتات</h3>';
+            for(var m=0;m<runsheets.length;m++){var rs=runsheets[m];html+='<div class="flex justify-between py-2 border-b text-sm"><span class="font-bold">'+rs.runsheet_code+'</span><span class="text-xs text-slate-400">'+rs.status+' | '+rs.run_date+'</span></div>'}
+            html+='</div>';
+            RW_UI.safeHTML(RW_UI.byId('mainContent'),html);
+        });
+    }
+};
+RW_SW.register('../sw.js');
+document.addEventListener('DOMContentLoaded',function(){App.init();});
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
