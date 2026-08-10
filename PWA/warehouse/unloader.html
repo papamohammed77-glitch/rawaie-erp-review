@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>مسؤول التفريغ | الروائع ERP</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0891b2">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3/dist/dexie.min.js"></script>
+    <script src="../core.js"></script>
+    <script>var supabase = window.supabase;</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#f8fafc;-webkit-tap-highlight-color:transparent}
+        .auth-bg{background:linear-gradient(135deg,#164e63 0%,#155e75 40%,#0891b2 100%)}
+        .card{background:#fff;border-radius:24px;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 24px rgba(0,0,0,0.03);transition:all 0.2s ease}
+        .card:active{transform:scale(0.985);background:#fafafa}
+        .btn-primary{background:linear-gradient(135deg,#0891b2,#06b6d4);color:#fff;padding:1rem 1.5rem;border-radius:16px;font-weight:700;border:none;cursor:pointer;width:100%;transition:all 0.2s ease;box-shadow:0 4px 12px rgba(8,145,178,0.25);font-size:1.1rem}
+        .btn-primary:active{transform:scale(0.97);box-shadow:0 2px 6px rgba(8,145,178,0.15)}
+        .tab-btn{transition:all 0.2s ease;padding:0.9rem 1.2rem;font-weight:800;font-size:0.85rem;border-bottom:3px solid transparent;color:#94a3b8;cursor:pointer;background:transparent;border-top:none;border-left:none;border-right:none}
+        .tab-btn.active{border-bottom-color:#0891b2;color:#0f172a}
+        .progress-bar{transition:width 0.6s ease}
+        .slide-in{animation:slideIn 0.3s ease}
+        @keyframes slideIn{from{opacity:0;transform:translateY(15px)}to{opacity:1;transform:translateY(0)}}
+        .skeleton{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:16px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem}
+        @media(min-width:768px){.grid-cards{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}}
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<!-- شاشة الدخول -->
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center auth-bg p-4">
+    <div class="bg-white rounded-[36px] shadow-2xl p-6 w-[92%] max-w-md slide-in">
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-cyan-200 mb-5">
+                <i class="fa-solid fa-truck-arrow-right text-white text-3xl"></i>
+            </div>
+            <h1 class="font-black text-2xl text-slate-800">الروائع</h1>
+            <p class="text-sm text-slate-400 font-semibold mt-1">مسؤول التفريغ</p>
+        </div>
+        <div class="space-y-4">
+            <div><input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-cyan-500 outline-none font-semibold text-sm"></div>
+            <div class="relative"><input id="loginPass" type="password" placeholder="كلمة السر" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-cyan-500 outline-none font-semibold text-sm pr-12"><button type="button" onclick="App.togglePass()" class="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-slate-300"><i id="passIcon" class="fa-solid fa-eye"></i></button></div>
+        </div>
+        <button onclick="App.doLogin()" class="w-full bg-gradient-to-r from-cyan-600 to-cyan-500 text-white py-4 rounded-2xl font-bold text-base shadow-lg mt-6">تسجيل الدخول</button>
+        <p id="loginMsg" class="text-center text-xs text-red-500 font-bold mt-4 hidden"></p>
+    </div>
+</div>
+
+<!-- التطبيق الرئيسي -->
+<div id="mainApp" class="hidden flex flex-col h-full">
+    <header class="bg-gradient-to-r from-cyan-700 to-cyan-600 text-white p-4 flex items-center justify-between sticky top-0 z-30 shadow-md flex-shrink-0">
+        <span class="font-black text-base">🔄 مسؤول التفريغ</span>
+        <div class="flex items-center gap-2">
+            <span id="connDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span id="connLabel" class="text-xs font-bold">متصل</span>
+            <button onclick="App.doLogout()" class="bg-white/15 w-9 h-9 rounded-full"><i class="fa-solid fa-arrow-right-from-bracket text-xs"></i></button>
+        </div>
+    </header>
+
+    <div class="flex gap-1.5 p-2 bg-white border-b border-slate-100 overflow-x-auto flex-shrink-0">
+        <button onclick="App.switchTab('pending')" class="tab-btn active" id="tab-pending">🔄 قيد التفريغ</button>
+        <button onclick="App.switchTab('completed')" class="tab-btn" id="tab-completed">✅ مكتملة</button>
+        <button onclick="App.switchTab('account')" class="tab-btn" id="tab-account">⚙️ حسابي</button>
+    </div>
+
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+</div>
+
+<script>
+var App = {
+    currentUser: null,
+    currentTab: 'pending',
+    runsheets: [],
+    completedRunsheets: [],
+    searchTimer: null,
+    searchResults: [],
+
+    togglePass: function(){
+        var p = RW_UI.byId('loginPass'); var i = RW_UI.byId('passIcon');
+        if(p.type === 'password'){ p.type = 'text'; i.className = 'fa-solid fa-eye-slash'; }
+        else { p.type = 'password'; i.className = 'fa-solid fa-eye'; }
+    },
+
+    doLogin: function(){
+        var email = RW_UI.byId('loginEmail').value.trim(); var pass = RW_UI.byId('loginPass').value.trim();
+        if(!email || !pass){ RW_UI.byId('loginMsg').innerText = 'أدخل البيانات'; RW_UI.byId('loginMsg').classList.remove('hidden'); return; }
+        RW_UI.byId('loginMsg').classList.add('hidden');
+        RW_UI.showLoader('جاري تسجيل الدخول...');
+        RW_Auth.doLogin(email, pass, function(user, err) {
+            RW_UI.hideLoader();
+            if (err) { RW_UI.byId('loginMsg').innerText = err; RW_UI.byId('loginMsg').classList.remove('hidden'); }
+            else { App.init(); }
+        });
+    },
+
+    init: function(){
+        var self = this;
+        RW_Auth.init(function(user, err) {
+            if (err || !user) {
+                if (err === 'NO_SESSION') return;
+                RW_UI.showError('انتهت الجلسة. يرجى إعادة التحميل.', function() { location.reload(); });
+                return;
+            }
+            self.currentUser = user;
+            if (!user.isOwner && user.activeWarehouseRole !== 'تفريغ') {
+                RW_UI.showError('دورك النشط هو "' + (user.activeWarehouseRole || 'غير محدد') + '". الرجاء التواصل مع مشرف المخازن.', function() { RW_Auth.doLogout(); });
+                return;
+            }
+            RW_UI.safeText(RW_UI.byId('headerUserName'), user.name);
+            self.enterApp();
+        });
+    },
+
+    enterApp: function(){
+        RW_UI.byId('loginScreen').classList.add('hidden');
+        RW_UI.byId('mainApp').classList.remove('hidden');
+        this.switchTab('pending');
+    },
+
+    doLogout: function(){
+        RW_Auth.doLogout(function() {
+            RW_UI.byId('mainApp').classList.add('hidden');
+            RW_UI.byId('loginScreen').classList.remove('hidden');
+        });
+    },
+
+    switchTab: function(tab){
+        this.currentTab = tab;
+        var tabs = ['pending', 'completed', 'account'];
+        for (var i = 0; i < tabs.length; i++) {
+            var btn = RW_UI.byId('tab-' + tabs[i]);
+            if (btn) { btn.classList.remove('active'); }
+        }
+        var activeBtn = RW_UI.byId('tab-' + tab);
+        if (activeBtn) { activeBtn.classList.add('active'); }
+        
+        if (tab === 'pending') this.loadRunsheets();
+        else if (tab === 'completed') this.loadCompleted();
+        else if (tab === 'account') this.renderAccount();
+    },
+
+    loadRunsheets: function(){
+        var self = this;
+        RW_UI.showSkeleton('mainContent', 3, 'card');
+        supabase.from('runsheets').select('runsheet_code, run_date, driver_id, status').in('status', ['Loaded', 'Delivering']).order('run_date', { ascending: false }).limit(30).then(function(res) {
+            self.runsheets = res.data || [];
+            self.renderList();
+        }).catch(function() {
+            RW_UI.showEmptyState('mainContent', 'فشل تحميل البيانات. تأكد من الاتصال.', '📡');
+        });
+    },
+
+    renderList: function(){
+        var self = this;
+        var html = '';
+        html += '<div class="mb-4"><p class="text-slate-400 text-sm">أهلاً، <span class="font-bold text-slate-700">' + (this.currentUser.name || 'زميل') + '</span> 👋</p></div>';
+        
+        html += '<div class="relative mb-4">';
+        html += '<input type="text" id="searchRS" placeholder="🔍 ابحث عن رقم رانشيت..." class="w-full p-4 bg-white rounded-2xl border-2 border-slate-100 focus:border-cyan-400 outline-none font-semibold text-sm shadow-sm" oninput="App.onSearchInput(this.value)">';
+        html += '<div id="searchDropdown" class="absolute top-full left-0 right-0 bg-white rounded-2xl mt-2 hidden z-40 shadow-lg max-h-60 overflow-y-auto border border-slate-100"></div>';
+        html += '</div>';
+        
+        html += '<h2 class="text-lg font-black mb-4">🔄 رانشيتات جاهزة للتفريغ</h2>';
+        
+        var filtered = this.runsheets;
+        var searchInput = RW_UI.byId('searchRS');
+        var searchDropdown = RW_UI.byId('searchDropdown');
+        var isDropdownVisible = searchDropdown && !searchDropdown.classList.contains('hidden');
+        
+        if (!isDropdownVisible && searchInput) {
+            var q = searchInput.value.trim().toLowerCase();
+            if (q) {
+                filtered = filtered.filter(function(rs) { return rs.runsheet_code.toLowerCase().indexOf(q) !== -1; });
+            }
+        }
+
+        if (filtered.length === 0) {
+            html += '<div class="text-center py-12"><div class="text-6xl mb-4">☕</div><p class="text-slate-400 font-bold">لا توجد رانشيتات للتفريغ.</p><p class="text-slate-300 text-sm mt-1">استمتع بقهوتك حتى تأتي مهمة جديدة!</p></div>';
+        } else {
+            html += '<div class="grid-cards">';
+            for (var i = 0; i < filtered.length; i++) {
+                var rs = filtered[i];
+                var isLoaded = rs.status === 'Loaded';
+                var statusColor = isLoaded ? 'bg-cyan-50 text-cyan-600 border-cyan-200' : 'bg-amber-50 text-amber-600 border-amber-200';
+                var statusIcon = isLoaded ? '📦' : '🚚';
+                var statusLabel = isLoaded ? 'جاهز للتفريغ' : 'قيد التوصيل';
+                var borderColor = isLoaded ? 'border-cyan-300' : 'border-amber-300';
+                
+                html += '<div class="card cursor-pointer slide-in border-2 ' + borderColor + ' hover:shadow-md transition" onclick="App.viewDetails(\'' + rs.runsheet_code + '\')">';
+                html += '<div class="flex flex-col items-center text-center">';
+                html += '<span class="text-3xl mb-2">' + statusIcon + '</span>';
+                html += '<span class="font-black text-lg text-slate-800">' + rs.runsheet_code + '</span>';
+                html += '<p class="text-xs text-slate-400 mt-1">' + rs.run_date + '</p>';
+                html += '<p class="text-xs text-slate-500 mt-1">السائق: ' + (rs.driver_id || '---') + '</p>';
+                html += '<span class="mt-2 px-3 py-1 rounded-full text-xs font-bold ' + statusColor + '">' + statusLabel + '</span>';
+                html += '<button class="btn-primary mt-3 text-sm py-2"><i class="fa-solid fa-eye ml-1"></i> معاينة</button>';
+                html += '</div></div>';
+            }
+            html += '</div>';
+        }
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+    },
+
+    onSearchInput: function(query) {
+        var self = this;
+        if (this.searchTimer) clearTimeout(this.searchTimer);
+        if (!query || query.trim().length < 1) {
+            var dd = RW_UI.byId('searchDropdown'); if (dd) dd.classList.add('hidden');
+            self.renderList();
+            return;
+        }
+        this.searchTimer = setTimeout(function() {
+            supabase.from('runsheets')
+                .select('runsheet_code, run_date, driver_id, status')
+                .in('status', ['Loaded', 'Delivering'])
+                .ilike('runsheet_code', '%' + query.trim() + '%')
+                .limit(10)
+                .then(function(res) {
+                    self.searchResults = res.data || [];
+                    self.renderSearchDropdown();
+                });
+        }, 300);
+    },
+
+    renderSearchDropdown: function() {
+        var dd = RW_UI.byId('searchDropdown');
+        if (!dd) return;
+        if (!this.searchResults || this.searchResults.length === 0) {
+            RW_UI.safeHTML(dd, '<div class="p-4 text-center text-slate-400 text-sm">🔍 لا يوجد رانشيت بهذا الرقم</div>');
+            dd.classList.remove('hidden');
+            return;
+        }
+        var html = '';
+        for (var i = 0; i < this.searchResults.length; i++) {
+            var rs = this.searchResults[i];
+            html += '<div onclick="App.viewDetails(\'' + rs.runsheet_code + '\')" class="p-3 border-b border-slate-50 hover:bg-cyan-50 cursor-pointer flex justify-between items-center"><div><span class="font-bold text-slate-700">' + rs.runsheet_code + '</span><br><span class="text-xs text-slate-400">' + (rs.run_date || '') + '</span></div><span class="text-xs text-slate-500">' + (rs.driver_id || '---') + '</span></div>';
+        }
+        RW_UI.safeHTML(dd, html);
+        dd.classList.remove('hidden');
+    },
+
+    viewDetails: function(code) {
+        var self = this;
+        var dd = RW_UI.byId('searchDropdown'); if (dd) dd.classList.add('hidden');
+        RW_UI.showLoader('جاري تحميل التفاصيل...');
+        supabase.from('runsheets').select('*').eq('runsheet_code', code).maybeSingle().then(function(rsRes) {
+            if (!rsRes.data) { RW_UI.hideLoader(); RW_UI.toast('الرانشيت غير موجود', 'error'); return; }
+            var rs = rsRes.data;
+            supabase.from('run_sheet_details').select('*').eq('runsheet_id', rs.id).then(function(detRes) {
+                RW_UI.hideLoader();
+                var items = detRes.data || [];
+                if (items.length === 0) { RW_UI.toast('لا توجد أصناف في هذا الرانشيت', 'info'); return; }
+                
+                var totalItems = 0, totalQty = 0, totalValue = 0;
+                var itemsHtml = '<div class="overflow-x-auto"><table class="w-full text-sm border"><thead class="bg-slate-100"><tr><th class="p-2">الصنف</th><th class="p-2 text-center">الوحدة</th><th class="p-2 text-center">الكمية المحمّلة</th><th class="p-2 text-center">السعر</th><th class="p-2 text-center">الإجمالي</th></tr></thead><tbody>';
+                for (var i = 0; i < items.length; i++) {
+                    var it = items[i];
+                    var qty = Number(it.qty_loaded) || 0;
+                    var price = Number(it.unit_price) || 0;
+                    var lineTotal = qty * price;
+                    totalItems++; totalQty += qty; totalValue += lineTotal;
+                    itemsHtml += '<tr class="border-t"><td class="p-2 font-semibold">' + (it.item_name || '') + '</td><td class="p-2 text-center">' + (it.unit || 'حبة') + '</td><td class="p-2 text-center font-bold">' + qty + '</td><td class="p-2 text-center">' + RW_UI.formatNumber(price) + '</td><td class="p-2 text-center font-bold">' + RW_UI.formatNumber(lineTotal) + '</td></tr>';
+                }
+                itemsHtml += '</tbody></table></div>';
+                
+                var summaryHtml = '<div class="bg-slate-50 rounded-2xl p-4 mt-3"><div class="grid grid-cols-2 gap-3 text-sm"><div><span class="text-slate-400">عدد الأصناف</span><p class="font-bold">' + totalItems + '</p></div><div><span class="text-slate-400">إجمالي الكمية</span><p class="font-bold">' + totalQty + '</p></div><div><span class="text-slate-400">القيمة التقديرية</span><p class="font-bold text-cyan-600">' + RW_UI.formatNumber(totalValue) + ' EGP</p></div></div></div>';
+
+                var html = '<div class="text-right space-y-4" style="max-height:70vh;overflow-y:auto;">';
+                html += '<div class="bg-cyan-50 p-4 rounded-2xl"><h3 class="font-black text-xl text-cyan-800">' + code + '</h3><p class="text-xs text-slate-500">التاريخ: ' + (rs.run_date || '') + ' | السائق: ' + (rs.driver_id || '---') + ' | الحالة: ' + rs.status + '</p></div>';
+                html += itemsHtml;
+                html += summaryHtml;
+                html += '<div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mt-3"><p class="text-sm font-bold text-amber-700"><i class="fa-solid fa-triangle-exclamation ml-1"></i> تنبيه: سيتم إعادة جميع هذه الكميات إلى المخزون.</p></div>';
+                html += '<button onclick="App.unloadFromDetails(\'' + code + '\', ' + totalQty + ', \'' + (RW_UI.formatNumber(totalValue) || '0') + '\')" class="btn-primary mt-4"><i class="fa-solid fa-check ml-2"></i> تأكيد التفريغ وإعادة المخزون</button>';
+                html += '</div>';
+                
+                Swal.fire({ title: 'تفاصيل الرانشيت قبل التفريغ', html: html, width: '700px', showCloseButton: true, showConfirmButton: false, customClass: { popup: '!rounded-3xl' } });
+            });
+        });
+    },
+
+    unloadFromDetails: function(code, totalQty, totalValue) {
+        var self = this;
+        Swal.close();
+        RW_UI.showConfirm('سيتم إعادة ' + totalQty + ' قطعة بقيمة ' + totalValue + ' إلى المخزون. متابعة؟', function() {
+            RW_UI.showLoader('جاري التفريغ...');
+            RW_API.call('unload-runsheet', { runsheet_code: code }, function(json) {
+                RW_UI.hideLoader();
+                if (json.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '✅ تم التفريغ بنجاح',
+                        html: '<div class="text-right"><p>تم إرجاع <strong>' + totalQty + ' قطعة</strong> إلى المخزون.</p><p>القيمة التقديرية: <strong>' + totalValue + '</strong></p></div>',
+                        confirmButtonText: 'حسناً',
+                        customClass: { popup: '!rounded-3xl', confirmButton: '!rounded-xl !bg-cyan-600' }
+                    });
+                    self.loadRunsheets();
+                } else {
+                    RW_UI.showError(json.msg || 'فشل التفريغ');
+                }
+            });
+        });
+    },
+
+    loadCompleted: function(){
+        var self = this;
+        RW_UI.showSkeleton('mainContent', 3, 'card');
+        supabase.from('stock_vouchers')
+            .select('voucher_code, voucher_date, reference')
+            .eq('type', 'Unloading')
+            .eq('status', 'Completed')
+            .order('voucher_date', { ascending: false })
+            .limit(30)
+            .then(function(res) {
+                self.completedRunsheets = res.data || [];
+                self.renderCompletedList();
+            }).catch(function() {
+                RW_UI.showEmptyState('mainContent', 'فشل تحميل سجل التفريغ.', '📡');
+            });
+    },
+
+    renderCompletedList: function(){
+        var html = '<h2 class="text-lg font-black mb-4">✅ سجل التفريغ المكتمل</h2>';
+        if (!this.completedRunsheets.length) {
+            html += '<div class="text-center py-16"><div class="text-5xl mb-4">🏆</div><p class="text-slate-400 font-bold">لا توجد عمليات تفريغ مكتملة بعد.</p><p class="text-slate-300 text-sm mt-1">كل ما تفرغه سيظهر هنا.</p></div>';
+        } else {
+            html += '<div class="space-y-2">';
+            for (var i = 0; i < this.completedRunsheets.length; i++) {
+                var v = this.completedRunsheets[i];
+                html += '<div class="card slide-in"><div class="flex justify-between items-center"><div><span class="font-bold text-slate-700">' + v.voucher_code + '</span><p class="text-xs text-slate-400">' + v.voucher_date + '</p></div><span class="text-xs text-slate-500">' + (v.reference || '---') + '</span></div></div>';
+            }
+            html += '</div>';
+        }
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+    },
+
+    renderAccount: function(){
+        var self = this;
+        var html = '<div class="text-center mb-8 mt-4"><div class="w-20 h-20 bg-gradient-to-br from-cyan-400 to-cyan-600 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl font-black shadow-lg mb-4">' + (this.currentUser.name || '?').charAt(0) + '</div><h2 class="font-black text-xl">' + (this.currentUser.name || this.currentUser.email) + '</h2><p class="text-sm text-slate-400">مسؤول تفريغ</p></div><div class="card mb-3"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-envelope"></i></div><div><p class="text-xs text-slate-400">البريد الإلكتروني</p><p class="font-bold text-sm">' + this.currentUser.email + '</p></div></div></div><button onclick="App.doLogout()" class="w-full bg-white border-2 border-red-100 text-red-500 py-4 rounded-2xl font-bold mt-6"><i class="fa-solid fa-arrow-right-from-bracket ml-2"></i> تسجيل الخروج</button>';
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), html);
+    }
+};
+
+if ('serviceWorker' in navigator) { navigator.serviceWorker.register('../sw.js').catch(function() {}); }
+document.addEventListener('DOMContentLoaded', function() {
+    RW_Auth.init(function(user, err) {
+        if (user) {
+            App.currentUser = user;
+            App.enterApp();
+        }
+    });
+});
+RW_SW.register('../sw.js');
+window.addEventListener('online', function() { RW_UI.updateConnectionStatus('connDot', 'connLabel'); });
+window.addEventListener('offline', function() { RW_UI.updateConnectionStatus('connDot', 'connLabel'); });
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
