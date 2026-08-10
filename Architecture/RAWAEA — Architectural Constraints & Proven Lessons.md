@@ -1,7 +1,7 @@
 # RAWAEA ERP — Architectural Constraints & Proven Lessons
 
-**Status:** Active architectural constraints for ongoing rescue/refactoring work
-**Scope:** Inventory repair and all subsequent application/Edge Function/database work
+**Status:** Active architectural constraints for ongoing rescue/refactoring work  
+**Scope:** Inventory repair and all subsequent application/Edge Function/database work  
 **Branch recorded on:** `rescue/manual-vouchers-inventory-core`
 
 ---
@@ -295,7 +295,32 @@ Once a decision is sufficiently proven, proceed to the next executable step.
 
 ---
 
-## 20. Governing Principle
+## 20. Evidence-First Implementation Discipline
+
+No implementation artifact is considered complete merely because a filename, function name, migration, or RPC declaration exists.
+
+For critical work, completeness requires verification of the **actual full content and behavior**:
+
+- read the complete function, not a snippet;
+- verify every dependency it calls;
+- verify the database objects and columns it actually uses;
+- verify authorization and RLS behavior along the real execution path;
+- verify transaction/atomicity behavior;
+- verify all relevant business branches, including negative/error paths;
+- verify that the claimed target behavior is actually implemented rather than merely documented or named.
+
+A file existing is not proof that the function is complete.  
+A function compiling is not proof that its business behavior is correct.  
+A migration existing is not proof that Production matches it.  
+A test passing one path is not proof that the whole lifecycle is correct.
+
+**No guessing, no assumed completion, no partial-function review, and no silent shortcuts.**
+
+This rule is mandatory for the Manual Voucher repair and remains applicable to subsequent Inventory and application repairs.
+
+---
+
+## 21. Governing Principle
 
 **Protect the business first, simplify the user's work second, and never achieve one by sacrificing the other.**
 
