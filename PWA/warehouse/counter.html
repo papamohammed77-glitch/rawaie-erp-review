@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>الجرد الذكي | الروائع ERP</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#b45309">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3/dist/dexie.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="../core.js"></script>
+    <script>var supabase = window.supabase;</script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#f8fafc;-webkit-tap-highlight-color:transparent}
+        .auth-bg{background:linear-gradient(135deg,#78350f 0%,#92400e 40%,#b45309 100%)}
+        .card{background:#fff;border-radius:24px;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 24px rgba(0,0,0,0.03);transition:all 0.2s ease}
+        .card:active{transform:scale(0.985)}
+        .btn-primary{background:linear-gradient(135deg,#b45309,#d97706);color:#fff;padding:1rem 1.5rem;border-radius:16px;font-weight:700;border:none;cursor:pointer;width:100%;box-shadow:0 4px 12px rgba(180,83,9,0.25)}
+        .btn-primary:active{transform:scale(0.97)}
+        .tab-btn{transition:all 0.2s ease}
+        .tab-btn.active{border-bottom-color:#b45309;color:#0f172a}
+        .slide-in{animation:slideIn 0.3s ease}
+        @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .skeleton{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center auth-bg p-4">
+    <div class="bg-white rounded-[36px] shadow-2xl p-6 w-[92%] max-w-md slide-in">
+        <div class="text-center mb-6"><div class="w-20 h-20 bg-gradient-to-br from-amber-500 to-amber-700 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-amber-200 mb-5"><i class="fa-solid fa-clipboard-check text-white text-3xl"></i></div><h1 class="font-black text-2xl text-slate-800">الروائع</h1><p class="text-sm text-slate-400 font-semibold mt-1">الجرد الذكي</p></div>
+        <div class="space-y-4"><div><input id="loginEmail" type="email" placeholder="البريد الإلكتروني" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-amber-500 outline-none font-semibold text-sm"></div><div class="relative"><input id="loginPass" type="password" placeholder="كلمة السر" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-amber-500 outline-none font-semibold text-sm pr-12"><button type="button" onclick="App.togglePass()" class="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-slate-300"><i id="passIcon" class="fa-solid fa-eye"></i></button></div></div>
+        <button onclick="App.doLogin()" class="w-full bg-gradient-to-r from-amber-600 to-amber-500 text-white py-4 rounded-2xl font-bold text-base shadow-lg mt-6">تسجيل الدخول</button>
+        <p id="loginMsg" class="text-center text-xs text-red-500 font-bold mt-4 hidden"></p>
+    </div>
+</div>
+
+<div id="mainApp" class="hidden flex flex-col h-full">
+    <header class="bg-gradient-to-r from-amber-700 to-amber-600 text-white p-4 flex items-center justify-between sticky top-0 z-30 shadow-md flex-shrink-0">
+        <span class="font-black text-base">🔍 الجرد الذكي</span>
+        <div class="flex items-center gap-2">
+            <span id="connDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+            <span id="connLabel" class="text-xs font-bold">متصل</span>
+            <button onclick="App.doLogout()" class="bg-white/15 w-9 h-9 rounded-full"><i class="fa-solid fa-arrow-right-from-bracket text-xs"></i></button>
+        </div>
+    </header>
+
+    <div class="flex gap-1.5 p-2 bg-white border-b border-slate-100 overflow-x-auto flex-shrink-0">
+        <button onclick="App.switchTab('new-count')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm active" id="tab-new-count">🔍 جرد جديد</button>
+        <button onclick="App.switchTab('completed')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-completed">✅ جردات سابقة</button>
+        <button onclick="App.switchTab('account')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-account">⚙️ حسابي</button>
+    </div>
+
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+</div>
+
+<script>
+var App = {
+    currentUser: null, pubUserId: null, cart: [], countType: 'branch', entityId: '',
+    html5QrcodeScanner: null, selectedDriver: null, currentTab: 'new-count',
+
+    togglePass: function(){var p=RW_UI.byId('loginPass'),i=RW_UI.byId('passIcon');if(p.type==='password'){p.type='text';i.className='fa-solid fa-eye-slash'}else{p.type='password';i.className='fa-solid fa-eye'}},
+    doLogin: function(){var e=RW_UI.byId('loginEmail').value.trim(),p=RW_UI.byId('loginPass').value.trim();if(!e||!p){RW_UI.byId('loginMsg').innerText='أدخل البيانات';RW_UI.byId('loginMsg').classList.remove('hidden');return}RW_UI.byId('loginMsg').classList.add('hidden');RW_UI.showLoader();RW_Auth.doLogin(e,p,function(u,er){RW_UI.hideLoader();if(er){RW_UI.byId('loginMsg').innerText=er;RW_UI.byId('loginMsg').classList.remove('hidden')}else App.init()})},
+
+    init: function(){var s=this;RW_Auth.init(function(u,er){if(er||!u){RW_UI.showError('انتهت الجلسة',function(){location.reload()});return}s.currentUser=u;if(!u.isOwner&&u.activeWarehouseRole!=='جرد'){RW_UI.showError('دورك النشط هو "'+(u.activeWarehouseRole||'غير محدد')+'"',function(){RW_Auth.doLogout()});return}RW_UI.safeText(RW_UI.byId('headerUserName'),u.name);s.enterApp()})},
+    enterApp: function(){RW_UI.byId('loginScreen').classList.add('hidden');RW_UI.byId('mainApp').classList.remove('hidden');RW_UI.updateConnectionStatus('connDot','connLabel');window.addEventListener('online',function(){RW_UI.updateConnectionStatus('connDot','connLabel')});window.addEventListener('offline',function(){RW_UI.updateConnectionStatus('connDot','connLabel')});this.switchTab('new-count')},
+    doLogout: function(){this.stopScanner();RW_Auth.doLogout(function(){RW_UI.byId('mainApp').classList.add('hidden');RW_UI.byId('loginScreen').classList.remove('hidden')})},
+
+    switchTab: function(tab){
+        this.currentTab = tab;
+        var tabs = ['new-count','completed','account'];
+        for (var i=0;i<tabs.length;i++){ var btn = RW_UI.byId('tab-'+tabs[i]); if(btn){btn.classList.remove('active');btn.classList.add('text-slate-400')} }
+        var act = RW_UI.byId('tab-'+tab); if(act){act.classList.add('active');act.classList.remove('text-slate-400')}
+        if(tab==='new-count') this.renderMain();
+        else if(tab==='completed') this.renderCompleted();
+        else if(tab==='account') this.renderAccount();
+    },
+
+    renderMain: function(){
+        this.cart=[]; RW_UI.showSkeleton('mainContent', 4, 'card');
+        var h='';
+        h+='<div class="mb-4"><p class="text-slate-400 text-sm">أهلاً، <span class="font-bold text-slate-700">'+(this.currentUser.name||'زميل')+'</span> 👋</p></div>';
+        h+='<h2 class="text-lg font-black mb-4">🔍 إعداد الجرد</h2>';
+        h+='<div class="card mb-4"><label class="text-xs font-bold block mb-2">نوع الجرد</label><select id="countType" class="w-full p-3 bg-slate-50 rounded-xl border font-bold"><option value="branch">🏭 جرد فرع</option><option value="vehicle">🚛 جرد سيارة</option><option value="general">🏢 جرد عام</option></select></div>';
+        h+='<div class="card mb-4"><label class="text-xs font-bold block mb-2">المعرف (الفرع/المندوب)</label><input id="countEntity" class="w-full p-3 bg-slate-50 rounded-xl border font-bold" placeholder="أدخل المعرف..."></div>';
+        h+='<hr class="my-6"><div class="flex items-center justify-between mb-4"><h2 class="text-lg font-black">📦 أصناف الجرد <span id="cartCount" class="text-sm text-slate-400">(0)</span></h2><button onclick="App.startScanner()" class="bg-amber-600 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"><i class="fa-solid fa-qrcode text-xl"></i></button></div>';
+        h+='<div id="cartItems" class="mb-4"><div class="text-center py-8"><div class="text-5xl mb-3">☕</div><p class="text-slate-400 font-bold">أضف أصنافاً يدوياً أو امسح الباركود</p></div></div>';
+        h+='<div class="card mb-4"><label class="text-xs font-bold block mb-2">بحث عن صنف</label><div class="flex gap-2"><input id="itemSearch" oninput="App.searchItems(this.value)" placeholder="ابحث..." class="flex-1 p-3 bg-slate-50 rounded-xl border font-bold"></div><div id="searchResults" class="mt-2 max-h-48 overflow-y-auto"></div></div>';
+        h+='<button onclick="App.submitCount()" class="btn-primary text-lg py-4"><i class="fa-solid fa-check ml-2"></i> حفظ الجرد</button>';
+        setTimeout(function(){ RW_UI.safeHTML(RW_UI.byId('mainContent'), h); }, 300);
+    },
+
+    searchItems: function(q){
+        if(!q||!q.trim()){RW_UI.safeHTML(RW_UI.byId('searchResults'),'');return}
+        supabase.from('items').select('item_code,name,unit').or('name.ilike.%'+q+'%,item_code.ilike.%'+q+'%').limit(10).then(function(r){var it=r.data||[],h='';for(var i=0;i<it.length;i++)h+='<div onclick="App.addToCart(\''+it[i].item_code+'\',\''+(it[i].name||'').replace(/'/g,"\\'")+'\',\''+(it[i].unit||'حبة')+'\')" class="p-2 hover:bg-amber-50 cursor-pointer border-b font-bold text-sm">'+it[i].name+' ('+it[i].item_code+')</div>';RW_UI.safeHTML(RW_UI.byId('searchResults'),h||'<p class="text-slate-400 text-sm p-2">لا توجد نتائج</p>')})
+    },
+
+    addToCart: function(code,name,unit){
+        var ex=null;for(var i=0;i<this.cart.length;i++){if(this.cart[i].code===code){ex=this.cart[i];break}}
+        if(ex)ex.qty++;else this.cart.push({code:code,name:name,unit:unit,qty:1});
+        this.renderCart();if(navigator.vibrate)navigator.vibrate(50);RW_UI.toast('✅ '+name,'success')
+    },
+
+    renderCart: function(){
+        if(!this.cart.length){RW_UI.safeHTML(RW_UI.byId('cartItems'),'<div class="text-center py-8"><div class="text-5xl mb-3">☕</div><p class="text-slate-400 font-bold">أضف أصنافاً يدوياً أو امسح الباركود</p></div>');RW_UI.safeText(RW_UI.byId('cartCount'),'(0)');return}
+        var h='';for(var i=0;i<this.cart.length;i++){var it=this.cart[i];h+='<div class="flex justify-between items-center p-3 bg-white rounded-2xl mb-2 shadow-sm"><span class="font-bold text-sm">'+it.name+'</span><div class="flex items-center gap-2"><button onclick="App.decCart('+i+')" class="w-8 h-8 bg-slate-100 rounded-full text-xs font-black">-</button><span class="w-8 text-center font-black text-lg">'+it.qty+'</span><button onclick="App.incCart('+i+')" class="w-8 h-8 bg-amber-600 text-white rounded-full text-xs font-black">+</button></div></div>'}RW_UI.safeHTML(RW_UI.byId('cartItems'),h);RW_UI.safeText(RW_UI.byId('cartCount'),'('+this.cart.length+')')
+    },
+    incCart: function(i){this.cart[i].qty++;this.renderCart()},
+    decCart: function(i){this.cart[i].qty--;if(this.cart[i].qty<=0)this.cart.splice(i,1);this.renderCart()},
+
+    submitCount: function(){
+        var type=RW_UI.byId('countType')?RW_UI.byId('countType').value:'branch',
+            entity=RW_UI.byId('countEntity')?RW_UI.byId('countEntity').value.trim():'';
+        if(!entity&&type!=='general'){RW_UI.toast('أدخل المعرف','warning');return}
+        if(!this.cart.length){RW_UI.toast('أضف أصنافاً','warning');return}
+        var its=[];
+        for(var i=0;i<this.cart.length;i++){its.push({itemCode:this.cart[i].code,itemName:this.cart[i].name,unit:this.cart[i].unit,qty:this.cart[i].qty,unitPrice:0,notes:''})}
+        RW_UI.showLoader();
+        RW_API.call('save-inventory-count',{type:type,entityId:entity||'MAIN',reference:'جرد - '+new Date().toLocaleDateString('ar-EG'),items:its},function(j){
+            RW_UI.hideLoader();
+            if(j.success){
+                var totalQty=0;for(var k=0;k<its.length;k++){totalQty+=its[k].qty}
+                Swal.fire({icon:'success',title:'✅ تم حفظ الجرد',html:'<div class="text-right"><p>تم جرد <strong>'+its.length+' صنف</strong> بنجاح.</p><p>إجمالي الكميات: <strong>'+totalQty+' قطعة</strong>.</p></div>',confirmButtonText:'حسناً',customClass:{popup:'!rounded-3xl',confirmButton:'!rounded-xl !bg-amber-600'}});
+                App.cart=[]; App.renderCart();
+            }else RW_UI.showError(j.msg||'فشل')
+        })
+    },
+
+    renderCompleted: function(){
+        var s=this; RW_UI.showSkeleton('mainContent', 4, 'card');
+        supabase.from('inventory_counts').select('type, reference, created_at, created_by').order('created_at',{ascending:false}).limit(30).then(function(r){
+            var logs=r.data||[];
+            var h='<h2 class="text-lg font-black mb-4">✅ سجل الجردات السابقة</h2>';
+            if(!logs.length){h+='<div class="text-center py-12"><div class="text-6xl mb-4">☕</div><p class="text-slate-400 font-bold">لا توجد جردات سابقة.</p><p class="text-slate-300 text-sm mt-1">كل جرد تقوم به سيظهر هنا.</p></div>'}
+            else {
+                for(var i=0;i<logs.length;i++){
+                    var log=logs[i];
+                    var typeLabel=log.type==='vehicle'?'🚛 سيارة':(log.type==='branch'?'🏭 فرع':'🏢 عام');
+                    h+='<div class="card mb-2"><div class="flex justify-between items-center"><div><span class="font-bold text-sm">'+typeLabel+' – '+(log.reference||'')+'</span><p class="text-xs text-slate-400 mt-1">'+(log.created_at?new Date(log.created_at).toLocaleDateString('ar-EG'):'')+'</p></div><span class="text-xs text-slate-400">'+(log.created_by||'')+'</span></div></div>'
+                }
+            }
+            RW_UI.safeHTML(RW_UI.byId('mainContent'), h);
+        }).catch(function(){RW_UI.showEmptyState('mainContent','فشل تحميل السجل.','📡')})
+    },
+
+    renderAccount: function(){
+        var h='<div class="text-center mb-8 mt-4"><div class="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl font-black shadow-lg mb-4">'+(this.currentUser.name||'?').charAt(0)+'</div><h2 class="font-black text-xl">'+(this.currentUser.name||this.currentUser.email)+'</h2><p class="text-sm text-slate-400">مسؤول جرد</p></div>';
+        h+='<div class="card mb-3"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center"><i class="fa-solid fa-envelope"></i></div><div><p class="text-xs text-slate-400">البريد الإلكتروني</p><p class="font-bold text-sm">'+this.currentUser.email+'</p></div></div></div>';
+        h+='<button onclick="App.doLogout()" class="w-full bg-white border-2 border-red-100 text-red-500 py-4 rounded-2xl font-bold mt-6"><i class="fa-solid fa-arrow-right-from-bracket ml-2"></i> تسجيل الخروج</button>';
+        RW_UI.safeHTML(RW_UI.byId('mainContent'), h);
+    },
+
+    startScanner: function(){
+        var s=this;Swal.fire({title:'مسح الباركود',html:'<div id="reader" style="width:100%;max-width:300px;margin:0 auto;"></div>',showCancelButton:false,showConfirmButton:false,customClass:{popup:'!rounded-3xl !p-4'},didOpen:function(){s.html5QrcodeScanner=new Html5Qrcode("reader");s.html5QrcodeScanner.start({facingMode:"environment"},{fps:10,qrbox:{width:250,height:150}},function(t){supabase.from('items').select('item_code,name,unit').eq('item_code',t).maybeSingle().then(function(r){if(r.data)s.addToCart(r.data.item_code,r.data.name,r.data.unit||'حبة');else RW_UI.toast('❌ صنف غير معروف: '+t,'error')})},function(){})},willClose:function(){if(s.html5QrcodeScanner){s.html5QrcodeScanner.stop().then(function(){s.html5QrcodeScanner.clear();s.html5QrcodeScanner=null})}}})
+    },
+    stopScanner: function(){if(this.html5QrcodeScanner){this.html5QrcodeScanner.stop().then(function(){this.html5QrcodeScanner.clear();this.html5QrcodeScanner=null})}}
+};
+
+RW_SW.register('../sw.js');
+document.addEventListener('DOMContentLoaded',function(){App.init()});
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
