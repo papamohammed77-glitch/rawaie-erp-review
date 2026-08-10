@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>محضّر | الروائع ERP</title>
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#4f46e5">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3/dist/dexie.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Cairo',sans-serif;background:#f8fafc;-webkit-tap-highlight-color:transparent}
+        .auth-container{background:linear-gradient(135deg,#312e81 0%,#4338ca 40%,#4f46e5 100%)}
+        .card{background:#fff;border-radius:24px;padding:1.25rem;box-shadow:0 1px 3px rgba(0,0,0,0.02),0 8px 24px rgba(0,0,0,0.03);transition:all 0.2s ease}
+        .card:active{transform:scale(0.985);background:#fafafa}
+        .btn-primary{background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;padding:1rem 1.5rem;border-radius:16px;font-weight:700;border:none;cursor:pointer;width:100%;transition:all 0.2s ease;box-shadow:0 4px 12px rgba(79,70,229,0.25)}
+        .btn-primary:active{transform:scale(0.97);box-shadow:0 2px 6px rgba(79,70,229,0.15)}
+        .btn-danger{background:linear-gradient(135deg,#ef4444,#f87171);color:#fff;padding:0.75rem 1.25rem;border-radius:14px;font-weight:700;border:none;cursor:pointer;transition:all 0.2s ease;box-shadow:0 4px 12px rgba(239,68,68,0.2)}
+        .btn-danger:active{transform:scale(0.97)}
+        .btn-reopen{background:linear-gradient(135deg,#f59e0b,#fbbf24);color:#fff;padding:0.75rem 1.25rem;border-radius:14px;font-weight:700;border:none;cursor:pointer;transition:all 0.2s ease;box-shadow:0 4px 12px rgba(245,158,11,0.2)}
+        .btn-reopen:active{transform:scale(0.97)}
+        .tab-btn{transition:all 0.2s ease}
+        .tab-btn:active{transform:scale(0.95)}
+        .progress-bar{transition:width 0.4s ease}
+        .slide-in{animation:slideIn 0.3s ease}
+        @keyframes slideIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .skeleton{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:12px}
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        .search-dropdown{max-height:60vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.12)}
+        .sticky-top{position:sticky;top:0;z-index:20}
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+<!-- شاشة الدخول -->
+<div id="loginScreen" class="fixed inset-0 z-[100] flex items-center justify-center auth-container p-4">
+    <div class="bg-white rounded-[36px] shadow-2xl p-6 w-[92%] max-w-md slide-in">
+        <div class="text-center mb-6">
+            <div class="w-20 h-20 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-indigo-200 mb-5">
+                <i class="fa-solid fa-clipboard-list text-white text-3xl"></i>
+            </div>
+            <h1 class="font-black text-2xl text-slate-800">الروائع</h1>
+            <p class="text-sm text-slate-400 font-semibold mt-1">المحضّر</p>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5">البريد الإلكتروني</label>
+                <input id="loginEmail" type="email" placeholder="example@domain.com" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:bg-white outline-none font-semibold text-sm transition-all">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1.5">كلمة السر</label>
+                <div class="relative">
+                    <input id="loginPass" type="password" placeholder="••••••••" class="w-full p-3.5 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-indigo-500 focus:bg-white outline-none font-semibold text-sm transition-all pr-12">
+                    <button type="button" onclick="App.togglePass()" class="absolute left-3 top-1/2 -translate-y-1/2 p-2 text-slate-300 hover:text-indigo-500 transition-colors">
+                        <i id="passIcon" class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <button onclick="App.doLogin()" class="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 text-white py-4 rounded-2xl font-bold text-base shadow-lg shadow-indigo-200 hover:shadow-xl transition-all mt-6">
+            تسجيل الدخول
+        </button>
+        <p id="loginMsg" class="text-center text-xs text-red-500 font-bold mt-4 hidden"></p>
+    </div>
+</div>
+
+<!-- التطبيق الرئيسي -->
+<div id="mainApp" class="hidden flex flex-col h-full">
+    <header class="bg-gradient-to-r from-indigo-700 to-indigo-600 text-white p-4 flex items-center justify-between sticky top-0 z-30 shadow-md flex-shrink-0">
+        <span class="font-black text-base">📋 المحضّر</span>
+        <div class="flex items-center gap-2">
+            <span class="text-xs font-bold opacity-90" id="headerUserName"></span>
+            <button onclick="App.doLogout()" class="bg-white/15 w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/25 transition-colors">
+                <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex gap-1.5 p-2 bg-white border-b border-slate-100 overflow-x-auto flex-shrink-0">
+        <button onclick="App.switchTab('pending')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm bg-indigo-600 text-white shadow-sm shadow-indigo-200" id="tab-pending">📋 قيد التحضير</button>
+        <button onclick="App.switchTab('completed')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-completed">✅ مكتملة</button>
+        <button onclick="App.switchTab('account')" class="tab-btn whitespace-nowrap px-5 py-2.5 rounded-2xl font-bold text-sm text-slate-400" id="tab-account">⚙️ حسابي</button>
+    </div>
+
+    <main id="mainContent" class="flex-1 overflow-y-auto p-4"></main>
+</div>
+
+<script>
+var SUPABASE_URL = 'https://fiilmooggumokxanwiyx.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZpaWxtb29nZ3Vtb2t4YW53aXl4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MDkwOTIsImV4cCI6MjA5NDI4NTA5Mn0.LZScCxnCiRrTSCCBmTryszQpY1AwBgR2dkTBbC5kOc4';
+var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var db = new Dexie('RW_Picker');
+db.version(1).stores({ runsheets: 'runsheet_code', details: '++id,runsheet_code', session: 'runsheet_code' });
+
+function byId(id) { return document.getElementById(id); }
+function safeText(el, text) { if (el) el.textContent = text; }
+function safeHTML(el, html) { if (el) el.innerHTML = html; }
+function toast(m, t) { Swal.fire({ toast: true, position: 'top', icon: t || 'info', title: m, showConfirmButton: false, timer: 2000, customClass: { popup: '!rounded-2xl !shadow-xl' } }); }
+
+var ITEMS_IMAGE_CACHE = {};
+var App = {
+    currentUser: null,
+    currentTab: 'pending',
+    pubUserId: null,
+    session: null,
+    timerInterval: null,
+    searchTimer: null,
+    allRunsheets: [],
+    searchResults: [],
+    completedRunsheets: [],
+
+    togglePass: function(){
+        var p = byId('loginPass'), i = byId('passIcon');
+        if(p.type === 'password'){ p.type = 'text'; i.className = 'fa-solid fa-eye-slash'; }
+        else { p.type = 'password'; i.className = 'fa-solid fa-eye'; }
+    },
+
+    doLogin: function(){
+        var email = byId('loginEmail').value.trim();
+        var pass = byId('loginPass').value.trim();
+        if(!email || !pass){
+            byId('loginMsg').innerText = 'أدخل البريد الإلكتروني وكلمة المرور';
+            byId('loginMsg').classList.remove('hidden');
+            return;
+        }
+        byId('loginMsg').classList.add('hidden');
+        var self = this;
+        Swal.showLoading();
+        supabase.auth.signInWithPassword({ email: email, password: pass }).then(function(res){
+            Swal.close();
+            if(res.error){
+                byId('loginMsg').innerText = res.error.message;
+                byId('loginMsg').classList.remove('hidden');
+            } else {
+                self.init();
+            }
+        }).catch(function(){
+            Swal.close();
+            byId('loginMsg').innerText = 'فشل الاتصال بالخادم';
+            byId('loginMsg').classList.remove('hidden');
+        });
+    },
+
+    init: function(){
+        var self = this;
+        supabase.auth.getSession().then(function(res){
+            if(res.data && res.data.session){
+                self.currentUser = res.data.session.user;
+                var meta = self.currentUser.user_metadata || {};
+                var isOwner = (meta.isOwner === true || meta.isOwner === 'true' || meta.role === 'owner' || meta.role === 'مالك');
+                var perms = meta.permissions || [];
+                var hasAccess = isOwner || (Array.isArray(perms) && perms.indexOf('warehouse') !== -1);
+                if(!hasAccess){
+                    Swal.fire({ title: 'غير مصرح', text: 'ليس لديك صلاحية الوصول للمخازن', icon: 'error', customClass: { popup: '!rounded-3xl' } });
+                    supabase.auth.signOut();
+                    return;
+                }
+                supabase.from('items').select('item_code, image_url').then(function(imgRes){
+                    var items = imgRes.data || [];
+                    for(var i = 0; i < items.length; i++){
+                        if(items[i].item_code && items[i].image_url) ITEMS_IMAGE_CACHE[items[i].item_code] = items[i].image_url;
+                    }
+                }).catch(function(){});
+                supabase.from('users').select('id, name, active_warehouse_role').eq('email', self.currentUser.email).maybeSingle().then(function(uRes){
+                    var userData = uRes.data || {};
+                    self.pubUserId = userData.id || null;
+                    var userName = userData.name || meta.name || self.currentUser.email;
+                    var activeRole = userData.active_warehouse_role || meta.active_warehouse_role || '';
+                    if(!isOwner && activeRole !== 'تحضير'){
+                        Swal.fire({ title: 'تنبيه', text: 'دورك النشط حالياً هو "' + (activeRole || 'غير محدد') + '". الرجاء التواصل مع مشرف المخازن.', icon: 'warning', customClass: { popup: '!rounded-3xl' } });
+                        supabase.auth.signOut();
+                        return;
+                    }
+                    safeText(byId('headerUserName'), userName);
+                    self.enterApp();
+                }).catch(function(){
+                    var activeRole = meta.active_warehouse_role || '';
+                    if(!isOwner && activeRole !== 'تحضير'){
+                        Swal.fire({ title: 'تنبيه', text: 'تعذر التحقق من دورك النشط.', icon: 'warning', customClass: { popup: '!rounded-3xl' } });
+                        supabase.auth.signOut();
+                        return;
+                    }
+                    safeText(byId('headerUserName'), meta.name || self.currentUser.email);
+                    self.enterApp();
+                });
+            }
+        });
+    },
+
+    enterApp: function(){
+        byId('loginScreen').classList.add('hidden');
+        byId('mainApp').classList.remove('hidden');
+        this.switchTab('pending');
+    },
+
+    switchTab: function(tab){
+        this.currentTab = tab;
+        var tabs = ['pending', 'completed', 'account'];
+        for(var i = 0; i < tabs.length; i++){
+            var btn = byId('tab-' + tabs[i]);
+            if(btn){ btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm', 'shadow-indigo-200'); btn.classList.add('text-slate-400'); }
+        }
+        var act = byId('tab-' + tab);
+        if(act){ act.classList.add('bg-indigo-600', 'text-white', 'shadow-sm', 'shadow-indigo-200'); act.classList.remove('text-slate-400'); }
+        if(tab === 'pending') this.renderPendingTab();
+        else if(tab === 'completed') this.renderCompletedTab();
+        else if(tab === 'account') this.renderAccount();
+    },
+
+    renderPendingTab: function(){
+        var self = this;
+        safeHTML(byId('mainContent'),
+            '<div class="mb-6"><div class="skeleton h-14 w-full mb-4"></div><div class="skeleton h-32 w-full mb-3"></div></div>'
+        );
+        // ✅ جلب عدد الأصناف مع الرانشيت
+        var p1 = supabase.from('runsheets').select('runsheet_code, status, run_date, picker_id, run_sheet_details(count)').eq('status', 'Picking').eq('picker_id', this.pubUserId || this.currentUser.email).order('run_date', { ascending: false }).limit(20);
+        var p2 = supabase.from('runsheets').select('runsheet_code, status, run_date, run_sheet_details(count)').eq('status', 'Open').order('run_date', { ascending: false }).limit(50);
+        Promise.all([p1, p2]).then(function(results){
+            var myRunsheets = results[0].data || [];
+            var openRunsheets = results[1].data || [];
+            self.allRunsheets = myRunsheets.concat(openRunsheets);
+            self.renderRunsheetLists(myRunsheets, openRunsheets);
+        }).catch(function(){
+            safeHTML(byId('mainContent'), '<div class="text-center py-20 text-red-400">فشل تحميل البيانات. تأكد من الاتصال.</div>');
+        });
+    },
+
+    renderRunsheetLists: function(myRunsheets, openRunsheets){
+        var html = '';
+        var userName = this.currentUser.user_metadata.name || this.currentUser.email.split('@')[0] || 'زميل';
+        var hour = new Date().getHours();
+        var greeting = hour < 12 ? 'صباح الخير' : (hour < 18 ? 'مساء الخير' : 'مساء الخير');
+        html += '<div class="mb-4"><p class="text-slate-400 text-sm">' + greeting + '، <span class="font-bold text-slate-700">' + userName + '</span> 👋</p></div>';
+        html += '<div class="relative mb-6">';
+        html += '<input type="text" id="searchRunsheet" placeholder="🔍 ابحث عن رقم رانشيت..." class="w-full p-4 bg-white rounded-2xl border-2 border-slate-100 focus:border-indigo-400 outline-none font-semibold text-sm transition-all shadow-sm" oninput="App.onSearchInput(this.value)">';
+        html += '<div id="searchDropdown" class="search-dropdown absolute top-full left-0 right-0 bg-white rounded-2xl mt-2 hidden z-40"></div>';
+        html += '</div>';
+        if(myRunsheets.length > 0){
+            html += '<h2 class="text-lg font-black text-slate-800 mb-3">📌 مهامي النشطة</h2>';
+            for(var i = 0; i < myRunsheets.length; i++){ html += this._buildRunsheetCard(myRunsheets[i], true); }
+            html += '<hr class="my-6 border-slate-100">';
+        }
+        html += '<h2 class="text-lg font-black text-slate-800 mb-3">📋 مهام متاحة للتحضير</h2>';
+        if(openRunsheets.length === 0){
+            html += '<div class="text-center py-12"><div class="text-6xl mb-4">☕</div><p class="text-slate-400 font-bold">لا توجد مهام متاحة في الوقت الحالي.</p><p class="text-slate-300 text-sm mt-1">استمتع بقهوتك حتى تأتي مهمة جديدة!</p></div>';
+        } else {
+            for(var j = 0; j < openRunsheets.length; j++){ html += this._buildRunsheetCard(openRunsheets[j], false); }
+        }
+        safeHTML(byId('mainContent'), html);
+    },
+
+    _buildRunsheetCard: function(rs, isActive){
+        var code = rs.runsheet_code || '';
+        // ✅ استخراج عدد الأصناف
+        var itemCount = (rs.run_sheet_details && rs.run_sheet_details.length > 0) ? rs.run_sheet_details[0].count : 0;
+        var statusIcon = isActive ? '🔄' : '📋';
+        var statusLabel = isActive ? 'قيد التحضير' : 'مفتوح';
+        var statusColor = isActive ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600';
+        var actionBtn = '';
+        if(isActive){
+            actionBtn = '<button onclick="event.stopPropagation(); App.cancelPicking(\'' + code + '\')" class="btn-danger mt-3 text-xs px-3 py-1.5"><i class="fa-solid fa-xmark ml-1"></i> إلغاء التحضير</button>';
+        }
+        return '<div class="card mb-3 cursor-pointer slide-in" onclick="App.openRunsheet(\'' + code + '\')">' +
+            '<div class="flex justify-between items-center">' +
+                '<div class="flex items-center gap-3">' +
+                    '<span class="text-2xl">' + statusIcon + '</span>' +
+                    '<div>' +
+                        '<span class="font-black text-base text-slate-800">' + code + '</span>' +
+                        '<p class="text-xs text-slate-400 mt-0.5">' + (rs.run_date || '') + ' | عدد الأصناف: <span class="font-bold text-slate-600">' + itemCount + '</span></p>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="flex items-center gap-2">' +
+                    '<span class="px-2.5 py-0.5 rounded-full text-xs font-bold ' + statusColor + '">' + statusLabel + '</span>' +
+                    '<i class="fa-solid fa-chevron-left text-slate-300 text-xs"></i>' +
+                '</div>' +
+            '</div>' + actionBtn +
+        '</div>';
+    },
+
+    onSearchInput: function(query){
+        var self = this;
+        if(this.searchTimer) clearTimeout(this.searchTimer);
+        if(!query || query.trim().length < 1){ byId('searchDropdown').classList.add('hidden'); return; }
+        this.searchTimer = setTimeout(function(){
+            supabase.from('runsheets').select('runsheet_code, status, run_date, picker_id, run_sheet_details(count)').ilike('runsheet_code', '%' + query.trim() + '%').limit(10).then(function(res){
+                self.searchResults = res.data || []; self.renderSearchDropdown();
+            });
+        }, 300);
+    },
+
+    renderSearchDropdown: function(){
+        var dropdown = byId('searchDropdown'); if(!dropdown) return;
+        var results = this.searchResults;
+        if(results.length === 0){
+            safeHTML(dropdown, '<div class="p-4 text-center text-slate-400 text-sm">🔍 لا يوجد رانشيت بهذا الرقم. تأكد مع المشرف.</div>');
+            dropdown.classList.remove('hidden'); return;
+        }
+        var html = '';
+        for(var i = 0; i < results.length; i++){
+            var rs = results[i];
+            var itemCount = (rs.run_sheet_details && rs.run_sheet_details.length > 0) ? rs.run_sheet_details[0].count : 0;
+            var isMine = (rs.status === 'Picking' && (rs.picker_id === this.pubUserId || rs.picker_id === this.currentUser.email));
+            var isTaken = (rs.status === 'Picking' && !isMine);
+            var icon = isMine ? '🔄' : (isTaken ? '🔒' : '📋');
+            var label = isMine ? 'قيد تحضيرك' : (isTaken ? 'مع زميل آخر' : 'مفتوح');
+            var bg = isMine ? 'bg-amber-50' : (isTaken ? 'bg-red-50' : 'bg-blue-50');
+            var textColor = isMine ? 'text-amber-600' : (isTaken ? 'text-red-500' : 'text-blue-600');
+            html += '<div onclick="App.openRunsheet(\'' + rs.runsheet_code + '\')" class="p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer flex justify-between items-center">';
+            html += '<div><span class="font-bold text-slate-700">' + rs.runsheet_code + '</span><br><span class="text-xs text-slate-400">' + (rs.run_date || '') + ' | ' + itemCount + ' صنف</span></div>';
+            html += '<span class="px-2 py-0.5 rounded-full text-xs font-bold ' + bg + ' ' + textColor + '">' + icon + ' ' + label + '</span>';
+            html += '</div>';
+        }
+        safeHTML(dropdown, html); dropdown.classList.remove('hidden');
+    },
+
+    // ==================== فتح تفاصيل الرانشيت (يقرأ الجلسة الحقيقية) ====================
+    openRunsheet: function(code){
+        var self = this;
+        byId('searchDropdown').classList.add('hidden');
+        safeHTML(byId('mainContent'), '<div class="text-center py-20"><div class="skeleton h-48 w-full mb-4"></div></div>');
+        supabase.from('runsheets').select('*').eq('runsheet_code', code).maybeSingle().then(function(rsRes){
+            if(!rsRes.data){ toast('الرانشيت غير موجود', 'error'); self.renderPendingTab(); return; }
+            var rs = rsRes.data;
+            supabase.from('run_sheet_details').select('*').eq('runsheet_id', rs.id).then(function(detRes){
+                var items = detRes.data || [];
+                var itemCount = items.length;
+                if(rs.status === 'Picking' && (rs.picker_id === self.pubUserId || rs.picker_id === self.currentUser.email)){
+                    self.session = { runsheet_code: code, runsheet_id: rs.id, start_time: rs.picker_start || new Date().toISOString(), items: [] };
+                    for(var i = 0; i < items.length; i++){
+                        self.session.items.push({
+                            item_code: items[i].item_code,
+                            item_name: items[i].item_name || '',
+                            unit: items[i].unit || 'حبة',
+                            description: items[i].description || '',
+                            qty_ordered: items[i].qty_ordered || 0,
+                            qty_picked: items[i].qty_picked || 0,
+                            notes: items[i].notes || ''
+                        });
+                    }
+                    self.renderActiveSession();
+                    return;
+                }
+                var html = '';
+                html += '<div class="flex items-center gap-3 mb-6"><button onclick="App.renderPendingTab()" class="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm"><i class="fa-solid fa-arrow-right"></i></button><span class="font-black text-xl text-slate-800">' + code + ' | عدد الأصناف: ' + itemCount + '</span></div>';
+                if(rs.status === 'Open'){
+                    html += '<button onclick="App.startPicking(\'' + code + '\')" class="btn-primary mb-6 sticky-top"><i class="fa-solid fa-play ml-2"></i> بدء التحضير</button>';
+                }
+                html += '<p class="text-sm text-slate-400 mb-6">اضغط على الصنف لرؤية التفاصيل</p>';
+                for(var k = 0; k < items.length; k++){
+                    var it = items[k];
+                    html += '<div class="card mb-3 cursor-pointer slide-in" onclick="App.showItemDetail(\'' + it.item_code + '\', \'' + (it.item_name || '').replace(/'/g, "\\'") + '\', \'' + (it.unit || 'حبة') + '\', ' + (it.qty_ordered || 0) + ', \'' + (it.description || '').replace(/'/g, "\\'") + '\')"><div class="flex items-center gap-4">' + self._img(it.item_code) + '<div><p class="font-bold text-slate-700">' + (it.item_name || '') + '</p><p class="text-xs text-slate-400 mt-0.5">' + (it.unit || 'حبة') + ' | الكمية: <span class="font-bold text-slate-600">' + (it.qty_ordered || 0) + '</span></p></div></div></div>';
+                }
+                safeHTML(byId('mainContent'), html);
+            });
+        });
+    },
+
+    _img: function(code){
+        var url = ITEMS_IMAGE_CACHE[code];
+        return url ? '<img src="' + url + '" class="w-14 h-14 rounded-2xl object-cover border-2 border-white shadow-sm" onerror="this.style.display=\'none\'">' : '<div class="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center text-slate-400"><i class="fa-solid fa-box"></i></div>';
+    },
+
+    showItemDetail: function(code, name, unit, qty, desc){
+        var img = ITEMS_IMAGE_CACHE[code] || '';
+        var imgHtml = img ? '<img src="' + img + '" class="w-full h-48 object-cover rounded-2xl mb-4 shadow-sm" onerror="this.style.display=\'none\'">' : '<div class="w-full h-48 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center text-slate-400 mb-4"><i class="fa-solid fa-box text-4xl"></i></div>';
+        Swal.fire({ html: '<div class="text-right">' + imgHtml + '<h3 class="font-black text-xl text-slate-800 mb-2">' + name + '</h3><div class="space-y-2 text-sm"><div class="flex justify-between"><span class="text-slate-400">الكود</span><span class="font-bold text-slate-600">' + code + '</span></div><div class="flex justify-between"><span class="text-slate-400">الوحدة</span><span class="font-bold text-slate-600">' + unit + '</span></div><div class="flex justify-between"><span class="text-slate-400">الكمية المطلوبة</span><span class="font-bold text-indigo-600 text-lg">' + qty + '</span></div></div>' + (desc ? '<p class="text-sm text-slate-500 mt-3 pt-3 border-t border-slate-100">' + desc + '</p>' : '') + '</div>', width: '380px', showCloseButton: true, showConfirmButton: false, customClass: { popup: '!rounded-3xl !p-5', closeButton: '!text-slate-300 !text-lg' } });
+    },
+
+    startPicking: function(code){
+        var self = this;
+        window._rwHasActiveSession = true;
+        if(!navigator.onLine){ toast('أنت غير متصل', 'warning'); return; }
+        Swal.fire({ title: 'جاري بدء التحضير...', allowOutsideClick: false, didOpen: function(){ Swal.showLoading(); } });
+        supabase.auth.getSession().then(function(sessionRes){
+            var token = sessionRes.data.session ? sessionRes.data.session.access_token : null;
+            if(!token){ Swal.close(); toast('انتهت الجلسة', 'error'); return; }
+            return fetch(SUPABASE_URL + '/functions/v1/start-picking', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ runsheet_code: code }) });
+        }).then(function(res){
+            if(!res) return;
+            if(!res.ok) return res.json().then(function(err){ throw new Error(err.msg || 'خطأ'); });
+            return res.json();
+        }).then(function(json){
+            Swal.close();
+            if(!json || !json.success){ toast((json && json.msg) || 'فشل', 'error'); return; }
+            toast('تم بنجاح', 'success');
+            self.openRunsheet(code);
+        }).catch(function(err){ Swal.close(); toast(err.message || 'فشل الاتصال', 'error'); });
+    },
+
+    cancelPicking: function(code){
+        var self = this;
+        Swal.fire({ title: 'تأكيد الإلغاء', text: 'هل أنت متأكد من إلغاء تحضير الرانشيت ' + code + '؟ سيعود مفتوحاً.', icon: 'warning', showCancelButton: true, confirmButtonText: 'نعم، ألغِ التحضير', cancelButtonText: 'رجوع', customClass: { popup: '!rounded-3xl', confirmButton: '!rounded-xl !bg-red-500 !px-8', cancelButton: '!rounded-xl' } }).then(function(result){
+            if(!result.isConfirmed) return;
+            Swal.showLoading();
+            supabase.auth.getSession().then(function(ses){
+                var token = ses.data.session ? ses.data.session.access_token : null;
+                if(!token){ Swal.close(); toast('انتهت الجلسة', 'error'); return; }
+                return fetch(SUPABASE_URL + '/functions/v1/cancel-picking', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ runsheet_code: code }) });
+            }).then(function(res){
+                if(!res) return; if(!res.ok) return res.json().then(function(err){ throw new Error(err.msg || 'خطأ'); }); return res.json();
+            }).then(function(json){
+                Swal.close();
+                if(json && json.success){ toast('تم إلغاء التحضير', 'success'); db.session.clear(); self.session = null; if(self.timerInterval) clearInterval(self.timerInterval); self.renderPendingTab(); }
+                else { toast((json && json.msg) || 'فشل الإلغاء', 'error'); }
+            }).catch(function(err){ Swal.close(); toast(err.message || 'فشل الاتصال', 'error'); });
+        });
+    },
+
+    renderActiveSession: function(){
+        var self = this; if(!this.session){ this.renderPendingTab(); return; }
+        var s = this.session;
+        var elapsed = '00:00';
+        if(s.start_time){ var diff = Math.floor((new Date() - new Date(s.start_time)) / 1000); var m = Math.floor(diff / 60), sec = diff % 60; elapsed = String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0'); }
+        var pickedCount = 0; for(var j = 0; j < s.items.length; j++){ if(s.items[j].qty_picked > 0) pickedCount++; }
+        var progress = s.items.length ? Math.round((pickedCount / s.items.length) * 100) : 0;
+        var html = '<div class="bg-indigo-50 rounded-3xl p-5 mb-6 slide-in"><div class="flex items-center justify-between mb-4"><span class="font-black text-2xl text-slate-800">' + s.runsheet_code + ' | ' + s.items.length + ' صنف</span><span class="bg-white text-indigo-600 px-4 py-2 rounded-2xl text-sm font-black shadow-sm">⏱️ ' + elapsed + '</span></div><div class="bg-white rounded-2xl p-4 shadow-sm"><div class="flex justify-between text-xs font-bold text-slate-400 mb-2"><span>تقدم التحضير</span><span>' + pickedCount + ' / ' + s.items.length + ' صنف</span></div><div class="w-full h-3 bg-slate-100 rounded-full overflow-hidden"><div class="progress-bar h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full" style="width:' + progress + '%"></div></div></div></div>';
+        html += '<p class="text-sm text-slate-400 mb-4">اضغط على الصنف لإدخال الكمية</p>';
+        for(var i = 0; i < s.items.length; i++){
+            var it = s.items[i]; var isDone = it.qty_picked > 0;
+            html += '<div class="card mb-3 cursor-pointer slide-in ' + (isDone ? 'border-r-4 border-indigo-400' : '') + '" onclick="App.editPickedItem(' + i + ')"><div class="flex items-center justify-between"><div class="flex items-center gap-4">' + self._img(it.item_code) + '<div><p class="font-bold text-slate-700">' + (it.item_name || '') + '</p><p class="text-xs text-slate-400 mt-0.5">' + (it.unit || 'حبة') + ' | مطلوب: ' + (it.qty_ordered || 0) + ' | <span class="font-bold ' + (isDone ? 'text-indigo-600' : 'text-slate-500') + '">محضّر: ' + (it.qty_picked || 0) + '</span></p>' + (it.notes ? '<p class="text-xs text-amber-600 mt-1">📝 ' + it.notes + '</p>' : '') + '</div></div><i class="fa-solid fa-pen text-slate-300 text-sm"></i></div></div>';
+        }
+        html += '<button onclick="App.completePicking()" class="btn-primary mt-6"><i class="fa-solid fa-check ml-2"></i> إنهاء التحضير</button>';
+        html += '<button onclick="App.cancelPicking(\'' + s.runsheet_code + '\')" class="btn-danger w-full mt-3"><i class="fa-solid fa-xmark ml-1"></i> إلغاء التحضير</button>';
+        safeHTML(byId('mainContent'), html); this.startTimer();
+    },
+
+    startTimer: function(){
+        var self = this; if(this.timerInterval) clearInterval(this.timerInterval);
+        this.timerInterval = setInterval(function(){
+            if(self.session && self.session.start_time){
+                var diff = Math.floor((new Date() - new Date(self.session.start_time)) / 1000); var m = Math.floor(diff / 60), sec = diff % 60;
+                var el = document.querySelector('.bg-white.text-indigo-600'); if(el) safeText(el, '⏱️ ' + String(m).padStart(2, '0') + ':' + String(sec).padStart(2, '0'));
+            }
+        }, 1000);
+    },
+
+    // ==================== نافذة تعديل الكمية (مع الصورة والوحدة والوصف) ====================
+    editPickedItem: function(index){
+        var self = this; var it = this.session.items[index];
+        var img = ITEMS_IMAGE_CACHE[it.item_code] || '';
+        var imgHtml = img ? '<img src="' + img + '" class="w-20 h-20 rounded-2xl object-cover mx-auto shadow-sm mb-3" onerror="this.style.display=\'none\'">' : '<div class="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl mx-auto flex items-center justify-center text-slate-400 mb-3"><i class="fa-solid fa-box text-2xl"></i></div>';
+        var unitHtml = it.unit ? '<div class="flex justify-between"><span class="text-slate-400">الوحدة</span><span class="font-bold text-slate-600">' + it.unit + '</span></div>' : '';
+        var descHtml = it.description ? '<p class="text-sm text-slate-500 mt-3 pt-3 border-t border-slate-100">' + it.description + '</p>' : '';
+
+        Swal.fire({
+            title: '<span class="text-slate-800">' + it.item_name + '</span>',
+            html: '<div class="text-center">' + imgHtml + '</div><div class="text-right text-sm space-y-2"><div class="flex justify-between"><span class="text-slate-400">الكمية المطلوبة</span><strong class="text-slate-700">' + it.qty_ordered + '</strong></div>' + unitHtml + '</div>' + descHtml + '<div class="mt-4 text-right"><label class="block text-xs font-bold text-slate-500 mb-2">الكمية المحضّرة</label><input id="swal-qty" type="number" class="swal2-input !rounded-xl !text-center !font-bold !text-lg" value="' + it.qty_picked + '" min="0" max="' + it.qty_ordered + '"><label class="block text-xs font-bold text-slate-500 mb-2 mt-4">ملاحظات</label><input id="swal-notes" class="swal2-input !rounded-xl" value="' + (it.notes || '') + '" placeholder="سبب النقص..."></div>',
+            showCancelButton: true, confirmButtonText: 'حفظ', cancelButtonText: 'إلغاء',
+            customClass: { popup: '!rounded-3xl', confirmButton: '!rounded-xl !bg-indigo-600 !px-8', cancelButton: '!rounded-xl' },
+            preConfirm: function(){
+                return { qty: Math.max(0, Math.min(parseInt(document.getElementById('swal-qty').value) || 0, it.qty_ordered)), notes: document.getElementById('swal-notes').value.trim() };
+            }
+        }).then(function(r){
+            if(r.isConfirmed){
+                self.session.items[index].qty_picked = r.value.qty;
+                self.session.items[index].notes = r.value.notes;
+                supabase.from('run_sheet_details').update({ qty_picked: r.value.qty }).eq('runsheet_id', self.session.runsheet_id || null).eq('item_code', it.item_code).then(function(){});
+                self.renderActiveSession();
+                if(r.value.qty < it.qty_ordered && !r.value.notes){
+                    Swal.fire({
+                        title: 'تنبيه',
+                        text: 'الكمية المحضّرة أقل من المطلوبة. هل تريد إضافة سبب النقص؟',
+                        icon: 'question', showCancelButton: true, confirmButtonText: 'إضافة سبب', cancelButtonText: 'تخطي',
+                        customClass: { popup: '!rounded-3xl', confirmButton: '!rounded-xl !bg-amber-500 !px-6', cancelButton: '!rounded-xl' }
+                    }).then(function(r2){ if(r2.isConfirmed){ self.editPickedItem(index); } });
+                }
+            }
+        });
+    },
+
+    completePicking: function(){
+        var self = this; if(!this.session) return; if(!navigator.onLine){ toast('أنت غير متصل', 'warning'); return; }
+        var items = []; var fullCount = 0, partialCount = 0, zeroCount = 0;
+        for(var i = 0; i < this.session.items.length; i++){
+            var it = this.session.items[i];
+            items.push({ itemCode: it.item_code, pickedQty: it.qty_picked, notes: it.notes });
+            if(it.qty_picked >= it.qty_ordered) fullCount++;
+            else if(it.qty_picked > 0) partialCount++;
+            else zeroCount++;
+        }
+        var summaryHtml = '<div class="text-right text-sm"><p>أنت على وشك إنهاء تحضير الرانشيت <strong>' + this.session.runsheet_code + '</strong>.</p><div class="mt-3 space-y-1"><div>✅ <strong>' + fullCount + '</strong> أصناف مكتملة</div><div>⚠️ <strong>' + partialCount + '</strong> أصناف منقوصة</div><div>❌ <strong>' + zeroCount + '</strong> أصناف لم تُحضّر</div></div>';
+        if(partialCount > 0 || zeroCount > 0){
+            summaryHtml += '<hr class="my-3"><p class="text-amber-600 font-bold text-xs">الأصناف الناقصة:</p><ul class="text-xs space-y-1 mt-1">';
+            for(var k = 0; k < this.session.items.length; k++){
+                var item = this.session.items[k];
+                if(item.qty_picked < item.qty_ordered){
+                    summaryHtml += '<li>• ' + item.item_name + ' (' + item.qty_picked + '/' + item.qty_ordered + ') ' + (item.notes ? '– ' + item.notes : '<span class="text-red-400">بدون سبب</span>') + '</li>';
+                }
+            }
+            summaryHtml += '</ul>';
+        }
+        summaryHtml += '</div>';
+        Swal.fire({
+            title: 'تأكيد إنهاء التحضير',
+            html: summaryHtml,
+            icon: 'info', showCancelButton: true, confirmButtonText: 'تأكيد ومتابعة', cancelButtonText: 'إلغاء',
+            customClass: { popup: '!rounded-3xl', confirmButton: '!rounded-xl !bg-indigo-600 !px-8', cancelButton: '!rounded-xl' }
+        }).then(function(result){
+            if(!result.isConfirmed) return;
+            Swal.fire({ title: 'جاري إنهاء التحضير...', allowOutsideClick: false, didOpen: function(){ Swal.showLoading(); } });
+            supabase.auth.getSession().then(function(sessionRes){
+                var token = sessionRes.data.session ? sessionRes.data.session.access_token : null;
+                if(!token){ Swal.close(); toast('انتهت الجلسة', 'error'); return; }
+                return fetch(SUPABASE_URL + '/functions/v1/complete-picking', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ runsheet_code: self.session.runsheet_code, items: items }) });
+            }).then(function(res){
+                if(!res) return; if(!res.ok) return res.json().then(function(err){ throw new Error(err.msg || 'خطأ'); }); return res.json();
+            }).then(function(json){
+                Swal.close();
+                if(!json || !json.success){ toast((json && json.msg) || 'فشل', 'error'); return; }
+                toast('تم إنهاء التحضير', 'success');
+db.session.clear();
+self.session = null;
+if (self.timerInterval) clearInterval(self.timerInterval);
+
+// ✅ إنهاء الجلسة النشطة والسماح بالتحديث التلقائي
+window._rwHasActiveSession = false;
+if (typeof RW_checkPendingReload === 'function') {
+    RW_checkPendingReload();
+}
+
+self.renderPendingTab();
+            }).catch(function(err){ Swal.close(); toast(err.message || 'فشل الاتصال', 'error'); });
+        });
+    },
+
+    // ==================== تبويب مكتملة ====================
+    renderCompletedTab: function(){
+        var self = this;
+        safeHTML(byId('mainContent'), '<div class="text-center py-20"><div class="skeleton h-12 w-3/4 mb-3"></div></div>');
+        supabase.from('runsheets').select('runsheet_code, run_date, status').eq('status', 'Picked').eq('picker_id', this.pubUserId || this.currentUser.email).order('run_date', { ascending: false }).limit(50).then(function(res){
+            self.completedRunsheets = res.data || [];
+            self.renderCompletedList(self.completedRunsheets);
+        }).catch(function(){ safeHTML(byId('mainContent'), '<div class="text-center py-20 text-red-400">فشل تحميل البيانات</div>'); });
+    },
+
+    renderCompletedList: function(list){
+        var html = '<h2 class="text-lg font-black text-slate-800 mb-4">✅ الرانشيتات التي أنهيتها</h2>';
+        html += '<input type="text" id="searchCompleted" placeholder="🔍 ابحث في المكتملة..." class="w-full p-4 bg-white rounded-2xl border-2 border-slate-100 focus:border-indigo-400 outline-none font-semibold text-sm transition-all shadow-sm mb-4" oninput="App.searchCompleted(this.value)">';
+        if(!list.length){
+            html += '<div class="text-center py-16"><div class="text-6xl mb-4">🏆</div><p class="text-slate-400 font-bold">لم تنهِ أي رانشيت بعد. العمل الجاد يُؤتي ثماره!</p></div>';
+        } else {
+            html += '<div id="completedList">';
+            for(var i = 0; i < list.length; i++){
+                var rs = list[i];
+                html += '<div class="card mb-3 slide-in"><div class="flex justify-between items-center"><div><span class="font-black text-base text-slate-800">' + rs.runsheet_code + '</span><p class="text-xs text-slate-400 mt-0.5">' + rs.run_date + '</p></div><button onclick="App.reopenPicking(\'' + rs.runsheet_code + '\')" class="btn-reopen text-xs px-3 py-1.5"><i class="fa-solid fa-pen-to-square ml-1"></i> تعديل التحضير</button></div></div>';
+            }
+            html += '</div>';
+        }
+        safeHTML(byId('mainContent'), html);
+    },
+
+    searchCompleted: function(query){
+        var filtered = this.completedRunsheets;
+        if(query && query.trim()){
+            var q = query.trim().toLowerCase();
+            filtered = this.completedRunsheets.filter(function(rs){ return (rs.runsheet_code || '').toLowerCase().indexOf(q) !== -1; });
+        }
+        this.renderCompletedList(filtered);
+    },
+
+    reopenPicking: function(code){
+        var self = this;
+        supabase.from('runsheets').select('status').eq('runsheet_code', code).maybeSingle().then(function(res){
+            if(!res.data || res.data.status !== 'Picked'){
+                Swal.fire({ title: 'لا يمكن التعديل', text: 'الرانشيت لم يعد في حالة مكتمل التحضير. قد يكون قيد التحميل.', icon: 'warning', customClass: { popup: '!rounded-3xl' } });
+                self.renderCompletedTab();
+                return;
+            }
+            Swal.fire({ title: 'تأكيد التعديل', text: 'سيتم إعادة فتح الرانشيت ' + code + ' للتعديل. سيُفرج عن الحجز. متابعة؟', icon: 'question', showCancelButton: true, confirmButtonText: 'نعم، تعديل', cancelButtonText: 'إلغاء', customClass: { popup: '!rounded-3xl', confirmButton: '!rounded-xl !bg-amber-500 !px-8', cancelButton: '!rounded-xl' } }).then(function(r){
+                if(!r.isConfirmed) return;
+                Swal.showLoading();
+                supabase.auth.getSession().then(function(ses){
+                    var token = ses.data.session ? ses.data.session.access_token : null;
+                    if(!token){ Swal.close(); toast('انتهت الجلسة', 'error'); return; }
+                    return fetch(SUPABASE_URL + '/functions/v1/reopen-picking', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ runsheet_code: code }) });
+                }).then(function(res){
+                    if(!res) return; if(!res.ok) return res.json().then(function(err){ throw new Error(err.msg || 'خطأ'); }); return res.json();
+                }).then(function(json){
+                    Swal.close();
+                    if(json && json.success){ toast('تم إعادة فتح الرانشيت للتعديل', 'success'); self.renderPendingTab(); }
+                    else { toast((json && json.msg) || 'فشل', 'error'); self.renderCompletedTab(); }
+                }).catch(function(err){ Swal.close(); toast(err.message || 'فشل الاتصال', 'error'); self.renderCompletedTab(); });
+            });
+        });
+    },
+
+    // ==================== تبويب حسابي ====================
+    renderAccount: function(){
+        var html = '<div class="text-center mb-8 mt-4"><div class="w-20 h-20 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl font-black shadow-lg shadow-indigo-200 mb-4">' + (this.currentUser.user_metadata.name || '?').charAt(0) + '</div><h2 class="font-black text-xl text-slate-800">' + (this.currentUser.user_metadata.name || this.currentUser.email) + '</h2><p class="text-sm text-slate-400">محضّر</p></div>';
+        html += '<div class="card mb-3"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400"><i class="fa-solid fa-envelope"></i></div><div><p class="text-xs text-slate-400">البريد الإلكتروني</p><p class="font-bold text-slate-700 text-sm">' + this.currentUser.email + '</p></div></div></div>';
+        html += '<button onclick="App.doLogout()" class="w-full bg-white border-2 border-red-100 text-red-500 py-4 rounded-2xl font-bold text-sm hover:bg-red-50 transition-all mt-6"><i class="fa-solid fa-arrow-right-from-bracket ml-2"></i> تسجيل الخروج</button>';
+        safeHTML(byId('mainContent'), html);
+    },
+
+    doLogout: function(){
+        var self = this; if(this.timerInterval) clearInterval(this.timerInterval);
+        supabase.auth.signOut().then(function(){ self.currentUser = null; byId('mainApp').classList.add('hidden'); byId('loginScreen').classList.remove('hidden'); byId('loginEmail').value = ''; byId('loginPass').value = ''; });
+    }
+};
+
+if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('../sw.js').then(function(reg){
+        reg.addEventListener('updatefound', function(){
+            var newWorker = reg.installing;
+            newWorker.addEventListener('statechange', function(){
+                if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+                    Swal.fire({ title: '🔄 تحديث متاح', text: 'تم تحميل نسخة أحدث من التطبيق.', icon: 'info', showCancelButton: false, confirmButtonText: 'تحديث الآن', customClass: { popup: '!rounded-3xl', confirmButton: '!rounded-xl !bg-indigo-600 !px-8' } }).then(function(){ newWorker.postMessage({ action: 'skipWaiting' }); window.location.reload(); });
+                }
+            });
+        });
+    }).catch(function(){});
+}
+
+document.addEventListener('DOMContentLoaded', function(){ App.init(); });
+</script>
+<script src="../register-sw.js"></script>
+</body>
+</html>
