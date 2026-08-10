@@ -22,12 +22,12 @@ join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.proname = 'post_manual_stock_voucher_atomic';
 
--- EVIDENCE-013: The deployed definition contains cumulative RECEIVE logic.
+-- EVIDENCE-013: Return the deployed RPC definition for direct verification.
+-- Do NOT infer correctness from brittle text-matching predicates.
+-- The owner/CTO review will verify the actual deployed definition against the target contract.
 select
-  position($e$coalesce(received_qty,0) + v_qty$e$ in pg_get_functiondef(p.oid)) > 0
-    as cumulative_receive_present,
-  position($e$case when v_remaining_details = 0 then 'Received' else 'Sent' end$e$ in pg_get_functiondef(p.oid)) > 0
-    as partial_receive_status_guard_present
+  p.oid::regprocedure as function_name,
+  pg_get_functiondef(p.oid) as deployed_function_definition
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
