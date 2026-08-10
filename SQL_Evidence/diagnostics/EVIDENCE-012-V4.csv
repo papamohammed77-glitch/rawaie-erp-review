@@ -1,0 +1,2 @@
+function_name,public_execute,service_role_execute
+"post_manual_stock_voucher_atomic(uuid,text,text,text,jsonb)",false,true
