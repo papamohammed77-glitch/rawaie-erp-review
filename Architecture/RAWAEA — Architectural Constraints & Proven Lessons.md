@@ -320,7 +320,33 @@ This rule is mandatory for the Manual Voucher repair and remains applicable to s
 
 ---
 
-## 21. Governing Principle
+## 21. Schema Contract & Evidence-First Database Discipline
+
+For every critical repair, the **actual Production schema is the authoritative Schema Contract** unless an explicit Target decision authorizes a schema change.
+
+Therefore:
+
+1. **Never invent a table or column.** Every referenced database object must be verified against authoritative Production evidence.
+2. **Never infer existence from code, naming, historical versions, or another environment.** A name appearing in an RPC, Edge Function, migration, or old branch is not proof that the object exists in Production.
+3. **Never add a column merely to make a test or existing function stop failing.** A schema change requires a demonstrated Target requirement and architectural justification.
+4. **Every critical RPC must be reviewed against the real schema.** Every `INSERT`, `UPDATE`, `SELECT`, join, filter, and returned field must be reconciled with actual table/column definitions and relationships.
+5. **RPC correctness and test correctness are separate questions.** A failing test must first be traced to its actual source; the test must not be modified merely to conceal a defect in a Production RPC, and a Production RPC must not be modified merely to satisfy a defective test.
+6. **Audit fields are architectural data, not implementation conveniences.** Before removing or adding an audit field such as `created_by`, `received_by`, or `completed_by`, determine the Target audit contract and preserve required investigative evidence.
+7. **Lifecycle semantics must be explicit.** For each business lifecycle, define exactly which stage changes state, which stage changes physical stock, which stage writes history, and which stage is administrative closure only. Never allow one lifecycle stage to duplicate another stage's inventory mutation.
+8. **Production definitions outrank assumptions.** When a conflict exists between documentation, Git branches, historical code, tests, and the deployed Production definition, classify the evidence and reconcile it before changing anything.
+9. **Evidence produced by important Production read-only queries must be persisted.** After executing a diagnostic query, its result must be uploaded to `SQL_Evidence/diagnostics/` on the rescue branch with a clear versioned filename, so future assistants can return to the evidence without forcing the user to repeat the query.
+10. **Every subsequent assistant must consult the persisted evidence before asking for the same diagnostic again.** Repetition is allowed only when the evidence is stale, contradictory, incomplete, or the Production state has intentionally changed.
+11. **No V-number iteration by guesswork.** Do not produce V5/V6/etc. merely because a previous test failed. First identify the exact root cause, verify the relevant Production definitions, then produce one coherent corrective artifact.
+
+**Mandatory rule:**
+
+> **Production Schema + Persisted Evidence + Actual Deployed Definitions → Target Reconciliation → Implementation → Validation.**
+
+No shortcut is permitted for critical Inventory work.
+
+---
+
+## 22. Governing Principle
 
 **Protect the business first, simplify the user's work second, and never achieve one by sacrificing the other.**
 
