@@ -1,0 +1,2 @@
+indexname,indexdef
+stock_voucher_details_pkey,CREATE UNIQUE INDEX stock_voucher_details_pkey ON public.stock_voucher_details USING btree (id)
