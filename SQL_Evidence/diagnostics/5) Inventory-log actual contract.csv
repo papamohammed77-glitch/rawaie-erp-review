@@ -1,0 +1,14 @@
+column_name,data_type,is_nullable,column_default
+id,uuid,NO,gen_random_uuid()
+company_id,uuid,NO,null
+log_code,character varying,NO,null
+movement_date,date,NO,CURRENT_DATE
+voucher_id,character varying,YES,null
+item_id,uuid,YES,null
+item_code,character varying,YES,null
+item_name,character varying,YES,null
+movement_type,character varying,NO,null
+qty,numeric,NO,null
+reference,text,YES,null
+user_email,character varying,YES,null
+created_at,timestamp with time zone,YES,now()

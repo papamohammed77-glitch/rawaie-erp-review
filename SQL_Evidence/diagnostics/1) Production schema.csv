@@ -1,0 +1,75 @@
+table_schema,table_name,column_name,data_type,is_nullable,column_default
+public,app_settings,id,uuid,NO,gen_random_uuid()
+public,app_settings,company_id,uuid,NO,null
+public,app_settings,delivery_fee,numeric,YES,0
+public,app_settings,min_invoice_amount,numeric,YES,0
+public,app_settings,tax_rate,numeric,YES,0
+public,app_settings,company_phone,character varying,YES,null
+public,app_settings,company_name,character varying,YES,null
+public,app_settings,company_logo,text,YES,null
+public,app_settings,runsheet_serial,integer,YES,1
+public,app_settings,order_serial,integer,YES,1
+public,app_settings,created_at,timestamp with time zone,YES,now()
+public,app_settings,updated_at,timestamp with time zone,YES,now()
+public,app_settings,status,character varying,YES,'trial'::character varying
+public,app_settings,trial_end_date,date,YES,null
+public,app_settings,subscription_end_date,date,YES,null
+public,app_settings,store_name,character varying,YES,null
+public,app_settings,store_logo,text,YES,null
+public,app_settings,store_primary_color,character varying,YES,'#2563eb'::character varying
+public,app_settings,store_secondary_color,character varying,YES,'#1e40af'::character varying
+public,app_settings,payment_method,character varying,YES,'both'::character varying
+public,app_settings,currency,character varying,YES,'SAR'::character varying
+public,app_settings,main_branch_id,uuid,YES,null
+public,inventory_log,id,uuid,NO,gen_random_uuid()
+public,inventory_log,company_id,uuid,NO,null
+public,inventory_log,log_code,character varying,NO,null
+public,inventory_log,movement_date,date,NO,CURRENT_DATE
+public,inventory_log,voucher_id,character varying,YES,null
+public,inventory_log,item_id,uuid,YES,null
+public,inventory_log,item_code,character varying,YES,null
+public,inventory_log,item_name,character varying,YES,null
+public,inventory_log,movement_type,character varying,NO,null
+public,inventory_log,qty,numeric,NO,null
+public,inventory_log,reference,text,YES,null
+public,inventory_log,user_email,character varying,YES,null
+public,inventory_log,created_at,timestamp with time zone,YES,now()
+public,stock_branches,id,uuid,NO,gen_random_uuid()
+public,stock_branches,branch_id,uuid,NO,null
+public,stock_branches,item_id,uuid,NO,null
+public,stock_branches,qty,numeric,NO,0
+public,stock_branches,allocated_qty,numeric,NO,0
+public,stock_branches,available_qty,numeric,YES,null
+public,stock_branches,updated_at,timestamp with time zone,YES,now()
+public,stock_voucher_details,id,uuid,NO,gen_random_uuid()
+public,stock_voucher_details,voucher_id,uuid,NO,null
+public,stock_voucher_details,item_id,uuid,NO,null
+public,stock_voucher_details,item_code,character varying,YES,null
+public,stock_voucher_details,item_name,character varying,YES,null
+public,stock_voucher_details,unit,character varying,YES,null
+public,stock_voucher_details,qty,numeric,NO,null
+public,stock_voucher_details,unit_price,numeric,YES,0
+public,stock_voucher_details,received_qty,numeric,YES,null
+public,stock_voucher_details,notes,text,YES,null
+public,stock_voucher_details,created_at,timestamp with time zone,YES,now()
+public,stock_vouchers,id,uuid,NO,gen_random_uuid()
+public,stock_vouchers,company_id,uuid,NO,null
+public,stock_vouchers,voucher_code,character varying,NO,null
+public,stock_vouchers,voucher_date,date,NO,CURRENT_DATE
+public,stock_vouchers,type,character varying,NO,null
+public,stock_vouchers,status,character varying,YES,'Draft'::character varying
+public,stock_vouchers,from_branch_id,uuid,YES,null
+public,stock_vouchers,to_branch_id,uuid,YES,null
+public,stock_vouchers,from_type,character varying,YES,null
+public,stock_vouchers,from_id,uuid,YES,null
+public,stock_vouchers,to_type,character varying,YES,null
+public,stock_vouchers,to_id,uuid,YES,null
+public,stock_vouchers,reference,character varying,YES,null
+public,stock_vouchers,notes,text,YES,null
+public,stock_vouchers,created_by,character varying,YES,null
+public,stock_vouchers,sent_date,timestamp with time zone,YES,null
+public,stock_vouchers,received_date,timestamp with time zone,YES,null
+public,stock_vouchers,completed_at,timestamp with time zone,YES,null
+public,stock_vouchers,created_at,timestamp with time zone,YES,now()
+public,stock_vouchers,updated_at,timestamp with time zone,YES,now()
+public,stock_vouchers,source,text,YES,'Manual'::text
