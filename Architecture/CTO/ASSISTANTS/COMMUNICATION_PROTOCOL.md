@@ -60,5 +60,21 @@ A missing file/path is a communication failure, not an analytical blocker.
 The assistant reports it, but CTO must first verify and repair the channel.
 No assistant may compensate by guessing task contents from memory.
 
-## 9. Completion Flow
-`CTO creates task → verifies task → Assistant works → OUTBOX result → CTO reads → other assistant reviews if assigned → CTO reconciliation → User review → Patch/Test/GO`
+## 9. Completion Notification — MANDATORY
+When a task is completed, the assistant MUST:
+1. write the complete result to the exact OUTBOX path specified by the task;
+2. verify the file exists on the active branch and contains the final result;
+3. NOT paste the substantive report into the ChatGPT conversation;
+4. send only this short notification in the conversation:
+
+`تم الرد — [HUSSEIN/MORAD] — [اسم ملف النتيجة]`
+
+This notification means only that the output file was written and verified. It does NOT mean CTO acceptance, PATCH authorization, or GO.
+
+## 10. Blocked Notification
+If genuinely blocked by missing evidence or an unresolved factual dependency, write the blocking report to the designated OUTBOX path, verify it, then send only:
+
+`تم الرد — [HUSSEIN/MORAD] — BLOCKED — [اسم ملف النتيجة]`
+
+## 11. Completion Flow
+`CTO creates task → verifies task → Assistant works → OUTBOX result → short chat notification → CTO reads → other assistant reviews if assigned → CTO reconciliation → User review → Patch/Test/GO`
