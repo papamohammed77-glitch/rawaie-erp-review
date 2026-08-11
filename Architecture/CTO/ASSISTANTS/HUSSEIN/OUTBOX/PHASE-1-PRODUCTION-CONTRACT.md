@@ -3,17 +3,17 @@
 ## CONFIRMED FACTS
 
 ### Production schema evidence
-`EVIDENCE-014.csv` proves these Production columns: `stock_vouchers(company_id, received_date, sent_date, status, voucher_code)`, `stock_voucher_details(item_code,item_id,qty,received_qty,voucher_id)`, and `stock_branches(allocated_qty,branch_id,item_id,qty)`. It does not prove the complete schema of every object referenced by all Manual Voucher RPCs. fileciteturn182file0
+`EVIDENCE-014.csv` proves these Production columns: `stock_vouchers(company_id, received_date, sent_date, status, voucher_code)`, `stock_voucher_details(item_code,item_id,qty,received_qty,voucher_id)`, and `stock_branches(allocated_qty,branch_id,item_id,qty)`. It does not prove the complete schema of every object referenced by all Manual Voucher RPCs.
 
-The project execution status records the already-proven fact that Production `stock_vouchers` does not contain `completed_by`. fileciteturn172file0
+The project execution status records the already-proven fact that Production `stock_vouchers` does not contain `completed_by`.
 
 ### Deployed COMPLETE
-`complete_manual_stock_voucher_atomic(uuid,text,text)` is deployed as `SECURITY DEFINER`; it locks the voucher, expects `Received` for `Transfer/DirectReturn` and `Sent` for `DirectSale/SupplierReturn`, then executes `status='Completed', completed_at=now(), completed_by=p_user_email`. fileciteturn176file0
+`complete_manual_stock_voucher_atomic(uuid,text,text)` is deployed as `SECURITY DEFINER`; it locks the voucher, expects `Received` for `Transfer/DirectReturn` and `Sent` for `DirectSale/SupplierReturn`, then executes `status='Completed', completed_at=now(), completed_by=p_user_email`.
 
-Current `complete-stock-voucher` validates the expected status and calls this RPC; it does not write `completed_by` itself. fileciteturn185file0
+Current `complete-stock-voucher` validates the expected status and calls this RPC; it does not write `completed_by` itself.
 
 ### Deployed POST
-`post_manual_stock_voucher_atomic(uuid,text,text,text,jsonb)` is `SECURITY DEFINER`; public execute is false and service-role execute is true. fileciteturn178file0turn180file0
+`post_manual_stock_voucher_atomic(uuid,text,text,text,jsonb)` is `SECURITY DEFINER`; public execute is false and service-role execute is true.
 
 Production POST proves:
 - `SEND` requires `Draft` and permits `Transfer`, `DirectSale`, `SupplierReturn`.
@@ -23,22 +23,22 @@ Production POST proves:
 - IN mutates `stock_branches.qty` only.
 - Every actual movement inserts `inventory_log`.
 - RECEIVE updates `stock_voucher_details.received_qty`.
-- SEND ends in `Sent`; RECEIVE ends in `Received` only when all quantities are received. fileciteturn181file0
+- SEND ends in `Sent`; RECEIVE ends in `Received` only when all quantities are received.
 
 ### Current SEND / RECEIVE
-Current SEND builds only OUT effects from `voucher.from_id` and calls the atomic POST RPC. fileciteturn188file0turn186file0
+Current SEND builds only OUT effects from `voucher.from_id` and calls the atomic POST RPC.
 
-Current RECEIVE builds IN effects to `voucher.to_id`, supports partial receipt, and when no received items are supplied derives all remaining quantities server-side. fileciteturn189file0turn186file0
+Current RECEIVE builds IN effects to `voucher.to_id`, supports partial receipt, and when no received items are supplied derives all remaining quantities server-side.
 
 ### Current types and endpoint semantics
-Current shared rules define exactly four lifecycle types: `Transfer`, `DirectSale`, `DirectReturn`, `SupplierReturn`. OUT-on-SEND: `Transfer`, `DirectSale`, `SupplierReturn`. IN-on-RECEIVE: `Transfer`, `DirectReturn`. Completion expected state: `Transfer/DirectReturn → Received`, `DirectSale/SupplierReturn → Sent`. fileciteturn186file0
+Current shared rules define exactly four lifecycle types: `Transfer`, `DirectSale`, `DirectReturn`, `SupplierReturn`. OUT-on-SEND: `Transfer`, `DirectSale`, `SupplierReturn`. IN-on-RECEIVE: `Transfer`, `DirectReturn`. Completion expected state: `Transfer/DirectReturn → Received`, `DirectSale/SupplierReturn → Sent`.
 
-Current CREATE resolves DirectSale to `MAIN → VAN-<user.email>` and DirectReturn to `VAN-<user.email> → MAIN` when endpoints are omitted, then calls the atomic CREATE RPC. fileciteturn187file0
+Current CREATE resolves DirectSale to `MAIN → VAN-<user.email>` and DirectReturn to `VAN-<user.email> → MAIN` when endpoints are omitted, then calls the atomic CREATE RPC.
 
 ### Architecture / audit
-The active architectural constraints make Production evidence authoritative over migrations, define `stock_branches` as current stock state and `inventory_log` as movement history, require central atomic inventory mutation, and prohibit code before Target reconciliation. They also require audit fields to be treated as architectural data. fileciteturn191file0
+The active architectural constraints make Production evidence authoritative over migrations, define `stock_branches` as current stock state and `inventory_log` as movement history, require central atomic inventory mutation, and prohibit code before Target reconciliation. They also require audit fields to be treated as architectural data.
 
-The security model documents `audit_log` as the general audit layer and lists `user_email, action, table_name, record_id, old_data, new_data, ip_address, user_agent`; however, the reviewed Manual Voucher RPCs do not prove that COMPLETE/CANCEL automatically create audit-log rows. fileciteturn195file0
+The security model documents `audit_log` as the general audit layer and lists `user_email, action, table_name, record_id, old_data, new_data, ip_address, user_agent`; however, the reviewed Manual Voucher RPCs do not prove that COMPLETE/CANCEL automatically create audit-log rows.
 
 ---
 
@@ -52,48 +52,48 @@ The security model documents `audit_log` as the general audit layer and lists `u
 | COMPLETE | Atomic COMPLETE; no stock mutation in deployed definition | None | None proven | Completed |
 | CANCEL | Current Edge calls atomic CANCEL | UNKNOWN | UNKNOWN | UNKNOWN |
 
-SEND/RECEIVE are directly supported by deployed RPC evidence. fileciteturn181file0
+SEND/RECEIVE are directly supported by deployed RPC evidence.
 
 ### Static integrity behavior
-Normal duplicate SEND is blocked by the `Draft` status requirement; duplicate COMPLETE is blocked by its expected-state check; duplicate/full RECEIVE is blocked by the `Sent`/remaining-quantity rules. These are `STATIC ONLY`, not empirical PASS. fileciteturn176file0turn181file0
+Normal duplicate SEND is blocked by the `Draft` status requirement; duplicate COMPLETE is blocked by its expected-state check; duplicate/full RECEIVE is blocked by the `Sent`/remaining-quantity rules. These are `STATIC ONLY`, not empirical PASS.
 
 ---
 
 ## DISCREPANCIES
 
 ### P0 — COMPLETE RPC / Production Schema mismatch
-Production has no proven `stock_vouchers.completed_by`, while deployed COMPLETE writes it. Current Edge calls that RPC. This is a live Production RPC/Schema contract defect. fileciteturn172file0turn176file0turn185file0
+Production has no proven `stock_vouchers.completed_by`, while deployed COMPLETE writes it. Current Edge calls that RPC. This is a live Production RPC/Schema contract defect.
 
 ### P0 — DirectSale Target conflict
-Current/Production: SEND = OUT from source only. fileciteturn186file0turn181file0
+Current/Production: SEND = OUT from source only.
 
-Unreleased `20260810_manual_voucher_core_v1_RELEASE.sql` contains another model: DirectSale SEND = OUT source + IN destination, while explicitly stating `NOT EXECUTED IN PRODUCTION`. fileciteturn193file0
+Unreleased `20260810_manual_voucher_core_v1_RELEASE.sql` contains another model: DirectSale SEND = OUT source + IN destination, while explicitly stating `NOT EXECUTED IN PRODUCTION`.
 
 Production behavior is known; final Target behavior is `TARGET DECISION REQUIRED`.
 
 ### P0 — DirectReturn Target conflict
-Current/Production: RECEIVE = IN to destination only. fileciteturn186file0turn181file0
+Current/Production: RECEIVE = IN to destination only.
 
-The unreleased release migration contains another model: DirectReturn RECEIVE = OUT source + IN destination. fileciteturn193file0
+The unreleased release migration contains another model: DirectReturn RECEIVE = OUT source + IN destination.
 
 Final Target behavior is `TARGET DECISION REQUIRED`.
 
 ### P1 — CANCEL deployed definition not yet proven
-Current `cancel-stock-voucher` calls `cancel_manual_stock_voucher_atomic(uuid,text,text)`, but the reviewed persisted Production evidence does not contain the complete deployed CANCEL definition. Therefore CANCEL state, stock, log, audit, failure and replay behavior are `UNKNOWN`. fileciteturn190file0
+Current `cancel-stock-voucher` calls `cancel_manual_stock_voucher_atomic(uuid,text,text)`, but the reviewed persisted Production evidence does not contain the complete deployed CANCEL definition. Therefore CANCEL state, stock, log, audit, failure and replay behavior are `UNKNOWN`.
 
 ### P1 — Full schema contract incomplete
-EVIDENCE-014 is not sufficient to prove every table/column referenced by CREATE/POST/COMPLETE/CANCEL. fileciteturn182file0turn176file0turn181file0
+EVIDENCE-014 is not sufficient to prove every table/column referenced by CREATE/POST/COMPLETE/CANCEL.
 
 ### P1 — Audit path incomplete
-General `audit_log` architecture is documented, but explicit Manual Voucher COMPLETE/CANCEL audit generation is not proven. fileciteturn195file0
+General `audit_log` architecture is documented, but explicit Manual Voucher COMPLETE/CANCEL audit generation is not proven.
 
 ---
 
 ## ROOT CAUSE
 
-1. **Schema/RPC divergence:** deployed COMPLETE writes a column absent from the proven Production schema. fileciteturn176file0turn182file0
-2. **Competing lifecycle definitions:** Architecture/current rules, deployed Production, Current code, Original, and unreleased migrations do not fully agree, demonstrated by DirectSale and DirectReturn. The execution status explicitly requires this reconciliation before patching. fileciteturn172file0
-3. **Audit contract not frozen:** the system documents a general audit layer, but the evidence does not prove where completion/cancellation actor evidence is authoritatively stored. Adding `completed_by` merely to silence the RPC is therefore unsafe. fileciteturn191file0turn195file0
+1. **Schema/RPC divergence:** deployed COMPLETE writes a column absent from the proven Production schema.
+2. **Competing lifecycle definitions:** Architecture/current rules, deployed Production, Current code, Original, and unreleased migrations do not fully agree, demonstrated by DirectSale and DirectReturn. The execution status explicitly requires this reconciliation before patching.
+3. **Audit contract not frozen:** the system documents a general audit layer, but the evidence does not prove where completion/cancellation actor evidence is authoritatively stored. Adding `completed_by` merely to silence the RPC is therefore unsafe.
 
 ---
 
@@ -121,7 +121,7 @@ No unrelated Inventory/RLS/Van Sales redesign belongs in this patch.
 | P1 | Full Production schema contract incomplete | UNKNOWN |
 | P1 | COMPLETE/CANCEL audit effects unproven | UNKNOWN |
 
-Current phase remains `NO GO`; GO is CTO-only. fileciteturn172file0
+Current phase remains `NO GO`; GO is CTO-only.
 
 ---
 
@@ -150,6 +150,8 @@ After Target decisions and the approved patch:
 
 **Proposed filename:** `SQL_Evidence/diagnostics/EVIDENCE-015-MANUAL-VOUCHER-PRODUCTION-SCHEMA.csv`
 
+**Current evidence status:** not present on the reviewed branch at the time of this task execution.
+
 ### EVIDENCE-016 — Complete deployed Manual Voucher RPC Contract
 **Purpose:** close missing deployed CANCEL evidence and preserve exact deployed signatures/definitions for the complete lifecycle.
 
@@ -161,6 +163,8 @@ After Target decisions and the approved patch:
 
 **Proposed filename:** `SQL_Evidence/diagnostics/EVIDENCE-016-MANUAL-VOUCHER-DEPLOYED-RPCS.csv`
 
+**Current evidence status:** not present on the reviewed branch at the time of this task execution.
+
 ### EVIDENCE-017 — Manual Voucher Audit Path
 **Purpose:** prove whether COMPLETE/CANCEL actor evidence is already captured by triggers/functions/audit_log.
 
@@ -171,6 +175,8 @@ After Target decisions and the approved patch:
 **Expected output:** proof of the authoritative audit path for completion/cancellation.
 
 **Proposed filename:** `SQL_Evidence/diagnostics/EVIDENCE-017-MANUAL-VOUCHER-AUDIT-PATH.csv`
+
+**Current evidence status:** not present on the reviewed branch at the time of this task execution.
 
 No other new evidence is requested at this phase.
 
@@ -186,16 +192,27 @@ Choose explicitly:
 - **A — current Production:** SEND = OUT source only.
 - **B — unreleased migration:** SEND = OUT source + IN destination.
 
-Production currently proves A; final Target intent is not proven by Production evidence alone. fileciteturn181file0turn193file0
+Production currently proves A; final Target intent is not proven by Production evidence alone.
 
 ### Decision 3 — DirectReturn Target
 Choose explicitly:
 - **A — current Production:** RECEIVE = IN destination only.
 - **B — unreleased migration:** RECEIVE = OUT source + IN destination.
 
-Production currently proves A; final Target intent remains a CTO Target decision. fileciteturn181file0turn193file0
+Production currently proves A; final Target intent remains a CTO Target decision.
 
 ### Gate
 `NO GO — PHASE 1 RECONCILIATION NOT YET CLOSED`
 
 No Production change, SQL execution, schema change, or patch was performed by this analysis.
+
+## EXECUTION CHECK — CURRENT TASK
+
+- `TASK-CURRENT.md` was read from `HUSSEIN/INBOX` on branch `rescue/manual-vouchers-inventory-core`.
+- Existing persisted evidence was reused; no duplicate SQL request was made.
+- `EVIDENCE-015`, `EVIDENCE-016`, and `EVIDENCE-017` were checked by exact repository path and are currently absent from the reviewed branch.
+- No SQL was executed.
+- No Production object was modified.
+- No schema change was made.
+- No application/test workaround was made.
+- No `GO` was issued.
