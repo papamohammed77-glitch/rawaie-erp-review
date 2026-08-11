@@ -17,10 +17,12 @@ Finish the Inventory Core, `vouchers.html`, `van-sales.html`, and all related Ed
 
 ## Execution Model
 ### Assistant 1 — Lead Analyst
+Mandate: `Architecture/CTO/ASSISTANT-1-LEAD-ANALYST-MANDATE.md`
 Reconcile Production RPCs, schema, current functions, original functions, migrations, Evidence, and architecture. Produce facts, unknowns, discrepancies, root cause, and one corrective plan.
 
 ### Assistant 2 — Adversarial Reviewer
-Work in parallel. Independently challenge Assistant 1 findings and search specifically for missed schema mismatches, lifecycle errors, lost legacy logic, audit/security regressions, and double stock movements.
+Mandate: `Architecture/CTO/ASSISTANT-2-ADVERSARIAL-REVIEW-MANDATE.md`
+Work in parallel. Independently challenge findings and search specifically for missed schema mismatches, lifecycle errors, lost legacy logic, audit/security regressions, and double stock movements.
 
 ### CTO Gate
 Merge both analyses, reject assumptions, select one coherent corrective patch, supervise Production execution, then validate with one comprehensive self-cleaning lifecycle test.
@@ -31,7 +33,7 @@ Merge both analyses, reject assumptions, select one coherent corrective patch, s
 - Production `stock_vouchers` does not contain `completed_by`.
 - Production `complete_manual_stock_voucher_atomic(uuid,text,text)` attempts to update `completed_by`.
 - Therefore the current blocker is a confirmed RPC/Production-Schema mismatch.
-- Additional lifecycle discrepancies must still be reconciled before the final patch; in particular DirectSale behavior must be compared across Production RPC, migration, current code, and original code.
+- Additional lifecycle discrepancies must still be reconciled before the final patch; in particular DirectSale, DirectReturn, and CANCEL behavior must be compared across Production RPC, migration, current code, and original code.
 
 ## Progress Gates
 1. [x] Inventory architecture diagnosis / Distributed Business Logic identified.
@@ -39,7 +41,7 @@ Merge both analyses, reject assumptions, select one coherent corrective patch, s
 3. [x] Manual Voucher RPCs retrieved from Production.
 4. [x] Company context validated.
 5. [x] Test branches/items context established.
-6. [ ] Complete Manual Voucher contract reconciliation.
+6. [ ] Complete Manual Voucher contract reconciliation — **ACTIVE / PARALLEL REVIEW**.
 7. [ ] One coherent corrective patch.
 8. [ ] Full self-cleaning Manual Voucher lifecycle test.
 9. [ ] Inventory Core Release Gate.
