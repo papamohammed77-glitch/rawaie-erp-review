@@ -147,7 +147,7 @@ var App = {
             supabase.from('run_sheet_details').select('*').eq('runsheet_id',rs.id).then(function(detRes) {
                 var items = detRes.data||[], isActive = (rs.status==='Loading'&&(rs.loader_id===self.currentUser.id||rs.loader_id===self.currentUser.email)), isAvail = (rs.status==='Picked');
                 if(isActive) { self._startSession(code,rs,items); return; }
-                if(isAvail) { self._showPreviewModal(code,rs,items); return; }
+                if(isAvail) { self._loadEligibleVehicles(function(vehicles,err){ if(err){RW_UI.showError(err);return;} self._showPreviewModal(code,rs,items,vehicles); }); return; }
                 self._renderReadonly(code,items);
             });
         });
@@ -159,10 +159,27 @@ var App = {
         this.renderActiveSession();
     },
 
-    _showPreviewModal: function(code, rs, items) {
+    _loadEligibleVehicles: function(callback) {
+        var self=this;
+        supabase.from('users').select('company_id').eq('email',this.currentUser.email).maybeSingle().then(function(u){
+            var companyId=u.data&&u.data.company_id;
+            if(u.error||!companyId){callback(null,'تعذر تحديد الشركة الحالية للمستخدم؛ لم يتم تحميل المركبات.');return;}
+            supabase.from('vehicles').select('id,vehicle_code,model,license_plate,status,mobile_stock_enabled,mobile_branch_id').eq('company_id',companyId).eq('status','Active').eq('mobile_stock_enabled',true).order('vehicle_code',{ascending:true}).then(function(v){
+                if(v.error){callback(null,'تعذر تحميل المركبات: '+v.error.message);return;}
+                callback(v.data||[],null);
+            });
+        }).catch(function(e){callback(null,'تعذر تحميل المركبات: '+(e&&e.message||'خطأ غير معروف'));});
+    },
+
+    _showPreviewModal: function(code, rs, items, vehicles) {
         var self = this, totalQty = 0, totalValue = 0;
         var h = '<div class="text-right space-y-4" style="max-height:70vh;overflow-y:auto;">';
         h += '<div class="bg-blue-50 p-4 rounded-2xl"><h3 class="font-black text-xl text-blue-800">'+code+'</h3><p class="text-xs text-slate-500">التاريخ: '+(rs.run_date||'')+' | الحالة: جاهز للتحميل</p></div>';
+        var safe=function(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');};
+        h += '<div class="bg-orange-50 border border-orange-100 p-4 rounded-2xl mb-4"><label for="loadingVehicleSelect" class="block font-black text-slate-800 mb-2"><i class="fa-solid fa-truck ml-2 text-orange-600"></i>المركبة المخصصة لهذا التحميل</label><select id="loadingVehicleSelect" class="w-full p-3 bg-white rounded-xl border-2 border-orange-100 outline-none font-bold"><option value="">— اختر المركبة قبل بدء التحميل —</option>';
+        vehicles=vehicles||[];
+        for(var vi=0;vi<vehicles.length;vi++){var v=vehicles[vi],label=(v.vehicle_code||'مركبة')+(v.license_plate?' — '+v.license_plate:'')+(v.model?' — '+v.model:'');h+='<option value="'+safe(v.id)+'"'+(rs.vehicle_id===v.id?' selected':'')+'>'+safe(label)+'</option>';}
+        h += '</select><p class="text-xs text-slate-500 mt-2">سيتم التحقق من صلاحية المركبة وفرع مخزونها وربطها بالرانشيت داخل معاملة واحدة قبل بدء التحميل.</p></div>';
         h += '<table class="w-full text-sm border"><thead class="bg-slate-100"><tr><th class="p-2">الصنف</th><th class="p-2 text-center">الوحدة</th><th class="p-2 text-center">المحضّرة</th><th class="p-2 text-center">السعر</th><th class="p-2 text-center">الإجمالي</th></tr></thead><tbody>';
         for(var i=0;i<items.length;i++) { var it=items[i], q=Number(it.qty_picked)||0, p=Number(it.unit_price)||0, lt=q*p; totalQty+=q; totalValue+=lt;
             h += '<tr class="border-t"><td class="p-2 font-semibold">'+(it.item_name||'')+'</td><td class="p-2 text-center">'+(it.unit||'حبة')+'</td><td class="p-2 text-center font-bold">'+q+'</td><td class="p-2 text-center">'+RW_UI.formatNumber(p)+'</td><td class="p-2 text-center font-bold">'+RW_UI.formatNumber(lt)+'</td></tr>'; }
@@ -174,7 +191,9 @@ var App = {
     },
 
     _startLoadingFromPreview: function(code) {
-        Swal.close(); this.startLoading(code);
+        var select=RW_UI.byId('loadingVehicleSelect'), vehicleId=select&&select.value;
+        if(!vehicleId){RW_UI.toast('اختر المركبة أولاً قبل بدء التحميل','warning');return;}
+        Swal.close(); this.startLoading(code,vehicleId);
     },
 
     _renderReadonly: function(code, items) {
@@ -183,9 +202,10 @@ var App = {
         RW_UI.safeHTML(RW_UI.byId('mainContent'), h);
     },
 
-    startLoading: function(code) {
+    startLoading: function(code, vehicleId) {
         var self = this; if(!navigator.onLine) { RW_UI.toast('أنت غير متصل','warning'); return; }
-        RW_UI.showLoader(); RW_API.call('start-loading',{runsheet_code:code},function(json) { RW_UI.hideLoader();
+        if(!vehicleId){RW_UI.toast('اختر المركبة أولاً قبل بدء التحميل','warning');return;}
+        RW_UI.showLoader(); RW_API.call('start-loading',{runsheet_code:code,vehicle_id:vehicleId},function(json) { RW_UI.hideLoader();
             if(json.success) { RW_UI.toast('تم بنجاح','success'); self.openRunsheet(code); }
             else { if(json.msg&&json.msg.indexOf('لديك بالفعل')!==-1) Swal.fire({title:'تنبيه',text:json.msg,icon:'info',customClass:{popup:'!rounded-3xl'}}); else RW_UI.showError(json.msg||'فشل'); self.renderPendingTab(); }
         });
